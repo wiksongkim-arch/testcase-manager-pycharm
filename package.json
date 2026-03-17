@@ -6,27 +6,19 @@
   "license": "Apache-2.0",
   "author": "TestCase Manager Team",
   "workspaces": [
-    "apps/*",
-    "packages/*",
-    "services/*"
+    "packages/*"
   ],
   "scripts": {
-    "build": "turbo run build",
-    "dev": "turbo run dev",
-    "lint": "turbo run lint",
-    "test": "turbo run test",
-    "format": "prettier --write \"**/*.{ts,tsx,md}\"",
-    "type-check": "turbo run type-check",
-    "clean": "turbo run clean && rm -rf node_modules"
+    "build": "tsc -b packages/shared packages/git-core",
+    "test": "npm run build && npx jest --config packages/git-core/jest.config.js"
   },
   "devDependencies": {
-    "prettier": "^3.8.1",
-    "turbo": "^2.8.17",
+    "@types/jest": "^29.5.12",
+    "jest": "^29.7.0",
     "typescript": "^5.9.3"
   },
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=9.0.0"
-  },
-  "packageManager": "npm@10.2.0"
+  }
 }

@@ -3,35 +3,23 @@
  * Supports cell-level conflict detection
  */
 
-export interface TestCase {
-  id: string;
-  name: string;
-  description?: string;
-  steps: TestStep[];
-  expectedResult?: string;
-  tags?: string[];
-  priority?: 'low' | 'medium' | 'high' | 'critical';
-  status?: 'draft' | 'active' | 'deprecated';
-  [key: string]: any;
-}
-
-export interface TestStep {
-  id: string;
-  order: number;
-  description: string;
-  expectedResult?: string;
-  [key: string]: any;
-}
+import type {
+  TestCaseFile,
+  RowData,
+  CellData,
+  ColumnDefinition,
+} from '@testcase-manager/shared';
 
 export interface MergeResult {
   success: boolean;
-  merged: TestCase[];
+  merged: TestCaseFile;
   conflicts: MergeConflict[];
 }
 
 export interface MergeConflict {
-  testCaseId: string;
-  field: string;
+  rowId: string;
+  columnId?: string;
+  cellId?: string;
   baseValue: any;
   localValue: any;
   remoteValue: any;
@@ -40,107 +28,41 @@ export interface MergeConflict {
 }
 
 /**
- * Three-way merge for test case arrays
+ * Three-way merge for TestCaseFile structures
  * @param base - Common ancestor version
  * @param local - Local changes
  * @param remote - Remote changes
  * @returns Merge result with conflicts
  */
-export function mergeTestCases(
-  base: TestCase[],
-  local: TestCase[],
-  remote: TestCase[]
+export function mergeTestCaseFiles(
+  base: TestCaseFile,
+  local: TestCaseFile,
+  remote: TestCaseFile
 ): MergeResult {
-  const merged: TestCase[] = [];
   const conflicts: MergeConflict[] = [];
 
-  // Create maps for quick lookup
-  const baseMap = new Map(base.map(tc => [tc.id, tc]));
-  const localMap = new Map(local.map(tc => [tc.id, tc]));
-  const remoteMap = new Map(remote.map(tc => [tc.id, tc]));
+  // Merge columns (column definitions should typically be the same)
+  const mergedColumns = mergeColumns(base.columns, local.columns, remote.columns);
 
-  // Get all unique test case IDs
-  const allIds = new Set([...baseMap.keys(), ...localMap.keys(), ...remoteMap.keys()]);
+  // Merge rows with conflict detection
+  const { merged: mergedRows, conflicts: rowConflicts } = mergeRows(
+    base.rows,
+    local.rows,
+    remote.rows
+  );
+  conflicts.push(...rowConflicts);
 
-  for (const id of allIds) {
-    const baseTc = baseMap.get(id);
-    const localTc = localMap.get(id);
-    const remoteTc = remoteMap.get(id);
-
-    // Case 1: Deleted in both - skip
-    if (!localTc && !remoteTc) {
-      continue;
-    }
-
-    // Case 2: Deleted in local, modified in remote - conflict
-    if (!localTc && remoteTc && baseTc) {
-      const remoteChanged = !isEqual(baseTc, remoteTc);
-      if (remoteChanged) {
-        conflicts.push({
-          testCaseId: id,
-          field: 'DELETED_LOCALLY_MODIFIED_REMOTELY',
-          baseValue: baseTc,
-          localValue: null,
-          remoteValue: remoteTc,
-        });
-        // Keep remote version for now
-        merged.push(remoteTc);
-      }
-      continue;
-    }
-
-    // Case 3: Deleted in remote, modified in local - conflict
-    if (localTc && !remoteTc && baseTc) {
-      const localChanged = !isEqual(baseTc, localTc);
-      if (localChanged) {
-        conflicts.push({
-          testCaseId: id,
-          field: 'DELETED_REMOTELY_MODIFIED_LOCALLY',
-          baseValue: baseTc,
-          localValue: localTc,
-          remoteValue: null,
-        });
-        // Keep local version for now
-        merged.push(localTc);
-      }
-      continue;
-    }
-
-    // Case 4: Added in local only
-    if (localTc && !remoteTc && !baseTc) {
-      merged.push(localTc);
-      continue;
-    }
-
-    // Case 5: Added in remote only
-    if (remoteTc && !localTc && !baseTc) {
-      merged.push(remoteTc);
-      continue;
-    }
-
-    // Case 6: Added in both with same ID - merge fields
-    if (localTc && remoteTc && !baseTc) {
-      const { merged: mergedTc, conflicts: tcConflicts } = mergeTestCaseFields(
-        null,
-        localTc,
-        remoteTc
-      );
-      merged.push(mergedTc);
-      conflicts.push(...tcConflicts);
-      continue;
-    }
-
-    // Case 7: Modified in both - three-way merge
-    if (localTc && remoteTc && baseTc) {
-      const { merged: mergedTc, conflicts: tcConflicts } = mergeTestCaseFields(
-        baseTc,
-        localTc,
-        remoteTc
-      );
-      merged.push(mergedTc);
-      conflicts.push(...tcConflicts);
-    }
-  }
+  // Create merged TestCaseFile
+  const merged: TestCaseFile = {
+    version: local.version || remote.version || base.version,
+    name: local.name || remote.name || base.name,
+    description: local.description || remote.description || base.description,
+    columns: mergedColumns,
+    rows: mergedRows,
+    settings: local.settings || remote.settings || base.settings,
+    createdAt: base.createdAt,
+    updatedAt: new Date().toISOString(),
+  };
 
   return {
     success: conflicts.length === 0,
@@ -150,185 +72,262 @@ export function mergeTestCases(
 }
 
 /**
- * Merge fields of a single test case
+ * Merge column definitions
  */
-function mergeTestCaseFields(
-  base: TestCase | null,
-  local: TestCase,
-  remote: TestCase
-): { merged: TestCase; conflicts: MergeConflict[] } {
-  const merged: TestCase = { ...local };
+function mergeColumns(
+  base: ColumnDefinition[],
+  local: ColumnDefinition[],
+  remote: ColumnDefinition[]
+): ColumnDefinition[] {
+  // Create maps for quick lookup
+  const baseMap = new Map(base.map(col => [col.id, col]));
+  const localMap = new Map(local.map(col => [col.id, col]));
+  const remoteMap = new Map(remote.map(col => [col.id, col]));
+
+  // Get all unique column IDs
+  const allIds = new Set([...baseMap.keys(), ...localMap.keys(), ...remoteMap.keys()]);
+  const merged: ColumnDefinition[] = [];
+
+  for (const id of allIds) {
+    const baseCol = baseMap.get(id);
+    const localCol = localMap.get(id);
+    const remoteCol = remoteMap.get(id);
+
+    // Case 1: Deleted in both - skip
+    if (!localCol && !remoteCol) {
+      continue;
+    }
+
+    // Case 2: Added in local only
+    if (localCol && !remoteCol && !baseCol) {
+      merged.push(localCol);
+      continue;
+    }
+
+    // Case 3: Added in remote only
+    if (remoteCol && !localCol && !baseCol) {
+      merged.push(remoteCol);
+      continue;
+    }
+
+    // Case 4: Both have the column - use local as default
+    if (localCol) {
+      merged.push(localCol);
+    } else if (remoteCol) {
+      merged.push(remoteCol);
+    }
+  }
+
+  // Sort by order if available
+  return merged.sort((a, b) => (a.order || 0) - (b.order || 0));
+}
+
+/**
+ * Merge rows with cell-level conflict detection
+ */
+function mergeRows(
+  base: RowData[],
+  local: RowData[],
+  remote: RowData[]
+): { merged: RowData[]; conflicts: MergeConflict[] } {
+  const merged: RowData[] = [];
   const conflicts: MergeConflict[] = [];
 
-  // Get all field keys
+  // Create maps for quick lookup
+  const baseMap = new Map(base.map(row => [row.id, row]));
+  const localMap = new Map(local.map(row => [row.id, row]));
+  const remoteMap = new Map(remote.map(row => [row.id, row]));
+
+  // Get all unique row IDs
+  const allIds = new Set([...baseMap.keys(), ...localMap.keys(), ...remoteMap.keys()]);
+
+  for (const id of allIds) {
+    const baseRow = baseMap.get(id);
+    const localRow = localMap.get(id);
+    const remoteRow = remoteMap.get(id);
+
+    // Case 1: Deleted in both - skip
+    if (!localRow && !remoteRow) {
+      continue;
+    }
+
+    // Case 2: Deleted in local, modified in remote - conflict
+    if (!localRow && remoteRow && baseRow) {
+      const remoteChanged = !isRowEqual(baseRow, remoteRow);
+      if (remoteChanged) {
+        conflicts.push({
+          rowId: id,
+          baseValue: baseRow,
+          localValue: null,
+          remoteValue: remoteRow,
+        });
+        // Keep remote version for now
+        merged.push(remoteRow);
+      }
+      continue;
+    }
+
+    // Case 3: Deleted in remote, modified in local - conflict
+    if (localRow && !remoteRow && baseRow) {
+      const localChanged = !isRowEqual(baseRow, localRow);
+      if (localChanged) {
+        conflicts.push({
+          rowId: id,
+          baseValue: baseRow,
+          localValue: localRow,
+          remoteValue: null,
+        });
+        // Keep local version for now
+        merged.push(localRow);
+      }
+      continue;
+    }
+
+    // Case 4: Added in local only
+    if (localRow && !remoteRow && !baseRow) {
+      merged.push(localRow);
+      continue;
+    }
+
+    // Case 5: Added in remote only
+    if (remoteRow && !localRow && !baseRow) {
+      merged.push(remoteRow);
+      continue;
+    }
+
+    // Case 6: Added in both with same ID - merge cells
+    if (localRow && remoteRow && !baseRow) {
+      const { merged: mergedRow, conflicts: cellConflicts } = mergeRowCells(
+        null,
+        localRow,
+        remoteRow
+      );
+      merged.push(mergedRow);
+      conflicts.push(...cellConflicts);
+      continue;
+    }
+
+    // Case 7: Modified in both - three-way merge at cell level
+    if (localRow && remoteRow && baseRow) {
+      const { merged: mergedRow, conflicts: cellConflicts } = mergeRowCells(
+        baseRow,
+        localRow,
+        remoteRow
+      );
+      merged.push(mergedRow);
+      conflicts.push(...cellConflicts);
+    }
+  }
+
+  // Sort by row number
+  return { merged: merged.sort((a, b) => a.rowNumber - b.rowNumber), conflicts };
+}
+
+/**
+ * Merge cells of a single row with cell-level conflict detection
+ */
+function mergeRowCells(
+  base: RowData | null,
+  local: RowData,
+  remote: RowData
+): { merged: RowData; conflicts: MergeConflict[] } {
+  const merged: RowData = {
+    ...local,
+    cells: { ...local.cells },
+  };
+  const conflicts: MergeConflict[] = [];
+
+  // Get all cell keys (column IDs)
   const allKeys = new Set([
-    ...Object.keys(local),
-    ...Object.keys(remote),
-    ...(base ? Object.keys(base) : []),
+    ...Object.keys(local.cells),
+    ...Object.keys(remote.cells),
+    ...(base ? Object.keys(base.cells) : []),
   ]);
 
-  for (const key of allKeys) {
-    // Skip internal fields
-    if (key.startsWith('_')) continue;
-
-    const baseVal = base ? base[key] : undefined;
-    const localVal = local[key];
-    const remoteVal = remote[key];
+  for (const columnId of allKeys) {
+    const baseCell = base?.cells[columnId];
+    const localCell = local.cells[columnId];
+    const remoteCell = remote.cells[columnId];
 
     // If local and remote are the same, no conflict
-    if (isEqual(localVal, remoteVal)) {
-      merged[key] = localVal;
+    if (isCellEqual(localCell, remoteCell)) {
+      merged.cells[columnId] = localCell;
       continue;
     }
 
     // If only local changed from base
-    if (base && isEqual(remoteVal, baseVal)) {
-      merged[key] = localVal;
+    if (base && isCellEqual(remoteCell, baseCell)) {
+      merged.cells[columnId] = localCell;
       continue;
     }
 
     // If only remote changed from base
-    if (base && isEqual(localVal, baseVal)) {
-      merged[key] = remoteVal;
+    if (base && isCellEqual(localCell, baseCell)) {
+      merged.cells[columnId] = remoteCell;
       continue;
     }
 
-    // Both changed differently - conflict!
-    // Special handling for arrays (like steps, tags)
-    if (Array.isArray(localVal) && Array.isArray(remoteVal)) {
-      if (key === 'steps') {
-        const { merged: mergedSteps, conflicts: stepConflicts } = mergeSteps(
-          base?.steps || [],
-          localVal,
-          remoteVal
-        );
-        merged[key] = mergedSteps;
-        conflicts.push(...stepConflicts.map(c => ({ ...c, testCaseId: local.id })));
-      } else if (key === 'tags') {
-        // Merge tags (union of both)
-        merged[key] = [...new Set([...localVal, ...remoteVal])];
-      } else {
-        // Generic array conflict
-        conflicts.push({
-          testCaseId: local.id,
-          field: key,
-          baseValue: baseVal,
-          localValue: localVal,
-          remoteValue: remoteVal,
-        });
-        // Use local as default
-        merged[key] = localVal;
-      }
-    } else {
-      // Simple field conflict
-      conflicts.push({
-        testCaseId: local.id,
-        field: key,
-        baseValue: baseVal,
-        localValue: localVal,
-        remoteValue: remoteVal,
-      });
-      // Use local as default
-      merged[key] = localVal;
-    }
+    // Both changed differently - cell-level conflict!
+    conflicts.push({
+      rowId: local.id,
+      columnId,
+      baseValue: baseCell?.value,
+      localValue: localCell?.value,
+      remoteValue: remoteCell?.value,
+    });
+
+    // Default to local value
+    merged.cells[columnId] = localCell;
   }
 
   return { merged, conflicts };
 }
 
 /**
- * Merge test steps with cell-level conflict detection
+ * Check if two rows are equal
  */
-function mergeSteps(
-  base: TestStep[],
-  local: TestStep[],
-  remote: TestStep[]
-): { merged: TestStep[]; conflicts: MergeConflict[] } {
-  const merged: TestStep[] = [];
-  const conflicts: MergeConflict[] = [];
+function isRowEqual(a: RowData, b: RowData): boolean {
+  if (a.id !== b.id) return false;
+  if (a.rowNumber !== b.rowNumber) return false;
+  if (a.parentId !== b.parentId) return false;
+  if (a.expanded !== b.expanded) return false;
 
-  // Create maps by step ID
-  const baseMap = new Map(base.map(s => [s.id, s]));
-  const localMap = new Map(local.map(s => [s.id, s]));
-  const remoteMap = new Map(remote.map(s => [s.id, s]));
+  // Compare cells
+  const aKeys = Object.keys(a.cells);
+  const bKeys = Object.keys(b.cells);
+  if (aKeys.length !== bKeys.length) return false;
 
-  const allIds = new Set([...baseMap.keys(), ...localMap.keys(), ...remoteMap.keys()]);
-
-  for (const id of allIds) {
-    const baseStep = baseMap.get(id);
-    const localStep = localMap.get(id);
-    const remoteStep = remoteMap.get(id);
-
-    // Both deleted
-    if (!localStep && !remoteStep) continue;
-
-    // Deleted in local
-    if (!localStep && remoteStep) {
-      if (baseStep && !isEqual(baseStep, remoteStep)) {
-        conflicts.push({
-          testCaseId: '', // Will be filled by caller
-          field: `step:${id}:DELETED_LOCALLY`,
-          baseValue: baseStep,
-          localValue: null,
-          remoteValue: remoteStep,
-        });
-      }
-      merged.push(remoteStep);
-      continue;
+  for (const key of aKeys) {
+    if (!isCellEqual(a.cells[key], b.cells[key])) {
+      return false;
     }
-
-    // Deleted in remote
-    if (localStep && !remoteStep) {
-      if (baseStep && !isEqual(baseStep, localStep)) {
-        conflicts.push({
-          testCaseId: '',
-          field: `step:${id}:DELETED_REMOTELY`,
-          baseValue: baseStep,
-          localValue: localStep,
-          remoteValue: null,
-        });
-      }
-      merged.push(localStep);
-      continue;
-    }
-
-    // Both exist - merge fields
-    if (!localStep || !remoteStep) continue;
-    
-    const mergedStep: TestStep = { ...localStep };
-    const stepKeys: (keyof TestStep)[] = ['description', 'expectedResult', 'order'];
-
-    for (const key of stepKeys) {
-      const baseVal = baseStep?.[key];
-      const localVal = localStep[key];
-      const remoteVal = remoteStep[key];
-
-      if (isEqual(localVal, remoteVal)) {
-        mergedStep[key] = localVal;
-      } else if (baseStep && isEqual(remoteVal, baseVal)) {
-        mergedStep[key] = localVal;
-      } else if (baseStep && isEqual(localVal, baseVal)) {
-        mergedStep[key] = remoteVal;
-      } else {
-        // Conflict at cell level
-        conflicts.push({
-          testCaseId: '',
-          field: `step:${id}:${key}`,
-          baseValue: baseVal,
-          localValue: localVal,
-          remoteValue: remoteVal,
-        });
-        mergedStep[key] = localVal; // Default to local
-      }
-    }
-
-    merged.push(mergedStep);
   }
 
-  // Sort by order
-  merged.sort((a, b) => a.order - b.order);
+  return true;
+}
 
-  return { merged, conflicts };
+/**
+ * Check if two cells are equal
+ */
+function isCellEqual(a: CellData | undefined, b: CellData | undefined): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+
+  // Compare values
+  if (!isEqual(a.value, b.value)) return false;
+
+  // Compare style if present
+  if (a.style || b.style) {
+    if (!isEqual(a.style, b.style)) return false;
+  }
+
+  // Compare formula if present
+  if (a.formula !== b.formula) return false;
+
+  // Compare readOnly if present
+  if (a.readOnly !== b.readOnly) return false;
+
+  return true;
 }
 
 /**
@@ -382,42 +381,46 @@ export function resolveConflict(
 }
 
 /**
- * Apply resolved conflicts to merged test cases
+ * Apply resolved conflicts to merged test case file
  */
 export function applyResolvedConflicts(
-  merged: TestCase[],
+  merged: TestCaseFile,
   conflicts: MergeConflict[]
-): TestCase[] {
-  const result = [...merged];
+): TestCaseFile {
+  const result: TestCaseFile = {
+    ...merged,
+    rows: [...merged.rows],
+  };
 
   for (const conflict of conflicts) {
     if (!conflict.resolved || conflict.resolvedValue === undefined) continue;
 
-    const tcIndex = result.findIndex(tc => tc.id === conflict.testCaseId);
-    if (tcIndex === -1) continue;
+    const rowIndex = result.rows.findIndex(row => row.id === conflict.rowId);
+    if (rowIndex === -1) continue;
 
-    const tc = result[tcIndex];
+    const row = result.rows[rowIndex];
 
-    // Handle step-level conflicts
-    if (conflict.field.startsWith('step:')) {
-      const parts = conflict.field.split(':');
-      if (parts.length >= 3) {
-        const stepId = parts[1];
-        const stepField = parts[2];
-        
-        if (stepField === 'DELETED_LOCALLY' || stepField === 'DELETED_REMOTELY') {
-          // Handle deletion conflicts
-          continue;
-        }
-
-        const stepIndex = tc.steps.findIndex(s => s.id === stepId);
-        if (stepIndex !== -1) {
-          (tc.steps[stepIndex] as any)[stepField] = conflict.resolvedValue;
-        }
-      }
+    if (conflict.columnId) {
+      // Cell-level conflict
+      result.rows[rowIndex] = {
+        ...row,
+        cells: {
+          ...row.cells,
+          [conflict.columnId]: {
+            ...row.cells[conflict.columnId],
+            value: conflict.resolvedValue,
+          },
+        },
+      };
     } else {
-      // Handle field-level conflicts
-      (tc as any)[conflict.field] = conflict.resolvedValue;
+      // Row-level conflict (entire row was deleted/modified)
+      if (conflict.resolvedValue === null) {
+        // Delete the row
+        result.rows = result.rows.filter(r => r.id !== conflict.rowId);
+      } else if (typeof conflict.resolvedValue === 'object') {
+        // Replace the row
+        result.rows[rowIndex] = conflict.resolvedValue;
+      }
     }
   }
 

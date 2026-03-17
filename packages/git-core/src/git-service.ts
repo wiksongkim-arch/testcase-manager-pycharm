@@ -2,44 +2,19 @@ import * as git from 'isomorphic-git';
 import http from 'isomorphic-git/http/node';
 import * as fs from 'fs-extra';
 import * as path from 'path';
-
-export interface GitCredentials {
-  username: string;
-  password: string;
-}
-
-export interface GitAuthor {
-  name: string;
-  email: string;
-}
-
-export interface PullResult {
-  success: boolean;
-  conflicts: string[];
-  message?: string;
-}
-
-export interface GitStatus {
-  staged: string[];
-  unstaged: string[];
-  untracked: string[];
-  conflicted: string[];
-}
-
-export interface CommitInfo {
-  oid: string;
-  message: string;
-  author: {
-    name: string;
-    email: string;
-    timestamp: number;
-  };
-  committer: {
-    name: string;
-    email: string;
-    timestamp: number;
-  };
-}
+import type {
+  GitCredentials,
+  GitAuthor,
+  PullResult,
+  GitStatus,
+  FileStatus,
+  GitCommitInfo,
+  GitBranch,
+  GitConflict,
+  PushResult,
+  CloneResult,
+  MergeResult,
+} from '@testcase-manager/shared';
 
 export class GitService {
   /**
@@ -49,7 +24,7 @@ export class GitService {
     repoUrl: string,
     localPath: string,
     credentials?: GitCredentials
-  ): Promise<void> {
+  ): Promise<CloneResult> {
     await fs.ensureDir(localPath);
     
     const options: any = {
@@ -62,13 +37,25 @@ export class GitService {
     };
 
     if (credentials) {
-      options.onAuth = () => ({
-        username: credentials.username,
-        password: credentials.password,
-      });
+      if (credentials.type === 'https') {
+        options.onAuth = () => ({
+          username: credentials.username,
+          password: credentials.password,
+        });
+      }
     }
 
     await git.clone(options);
+
+    const defaultBranch = await this.getCurrentBranch(localPath);
+    const initialCommitSha = await git.resolveRef({ fs, dir: localPath, ref: 'HEAD' });
+
+    return {
+      success: true,
+      localPath,
+      defaultBranch,
+      initialCommitSha,
+    };
   }
 
   /**
@@ -128,7 +115,7 @@ export class GitService {
     remote: string,
     branch: string,
     credentials?: GitCredentials
-  ): Promise<void> {
+  ): Promise<PushResult> {
     const options: any = {
       fs,
       http,
@@ -138,13 +125,22 @@ export class GitService {
     };
 
     if (credentials) {
-      options.onAuth = () => ({
-        username: credentials.username,
-        password: credentials.password,
-      });
+      if (credentials.type === 'https') {
+        options.onAuth = () => ({
+          username: credentials.username,
+          password: credentials.password,
+        });
+      }
     }
 
     await git.push(options);
+
+    return {
+      success: true,
+      remoteUrl: remote,
+      branch,
+      pushedCommits: [], // Would need to track which commits were pushed
+    };
   }
 
   /**
@@ -157,6 +153,8 @@ export class GitService {
     credentials?: GitCredentials
   ): Promise<PullResult> {
     try {
+      const previousSha = await git.resolveRef({ fs, dir: localPath, ref: 'HEAD' });
+
       const options: any = {
         fs,
         http,
@@ -167,20 +165,29 @@ export class GitService {
       };
 
       if (credentials) {
-        options.onAuth = () => ({
-          username: credentials.username,
-          password: credentials.password,
-        });
+        if (credentials.type === 'https') {
+          options.onAuth = () => ({
+            username: credentials.username,
+            password: credentials.password,
+          });
+        }
       }
 
       await git.pull(options);
+      const newSha = await git.resolveRef({ fs, dir: localPath, ref: 'HEAD' });
 
       // Check for conflicts after pull
       const conflicts = await this.getConflicts(localPath);
 
       return {
         success: true,
+        fetchedCommits: [], // Would need to track fetched commits
+        mergedCommits: [], // Would need to track merged commits
+        updatedFiles: [], // Would need to track updated files
         conflicts,
+        fastForward: true, // Simplified - actual detection needed
+        previousSha,
+        newSha,
       };
     } catch (error: any) {
       // Check if it's a merge conflict error
@@ -188,8 +195,12 @@ export class GitService {
         const conflicts = await this.getConflicts(localPath);
         return {
           success: false,
+          fetchedCommits: [],
+          mergedCommits: [],
+          updatedFiles: [],
           conflicts,
-          message: error.message,
+          fastForward: false,
+          error: error.message,
         };
       }
       throw error;
@@ -199,9 +210,29 @@ export class GitService {
   /**
    * Get list of branches
    */
-  async getBranches(localPath: string): Promise<string[]> {
+  async getBranches(localPath: string): Promise<GitBranch[]> {
     const branches = await git.listBranches({ fs, dir: localPath });
-    return branches;
+    const currentBranch = await this.getCurrentBranch(localPath);
+
+    return Promise.all(
+      branches.map(async (name) => {
+        const ref = `refs/heads/${name}`;
+        let commitSha: string;
+        try {
+          commitSha = await git.resolveRef({ fs, dir: localPath, ref });
+        } catch {
+          commitSha = '';
+        }
+
+        return {
+          name,
+          ref,
+          commitSha,
+          isCurrent: name === currentBranch,
+          isRemote: false,
+        };
+      })
+    );
   }
 
   /**
@@ -223,48 +254,85 @@ export class GitService {
    */
   async getStatus(localPath: string): Promise<GitStatus> {
     const status = await git.statusMatrix({ fs, dir: localPath });
-    
-    const result: GitStatus = {
-      staged: [],
-      unstaged: [],
-      untracked: [],
-      conflicted: [],
-    };
+    const currentBranch = await this.getCurrentBranch(localPath);
+    let currentCommitSha: string;
+    try {
+      currentCommitSha = await git.resolveRef({ fs, dir: localPath, ref: 'HEAD' });
+    } catch {
+      currentCommitSha = '';
+    }
+
+    const files: FileStatus[] = [];
+    let untrackedCount = 0;
+    let modifiedCount = 0;
+    let stagedCount = 0;
+    let conflictedCount = 0;
 
     for (const [filepath, headStatus, workdirStatus, stageStatus] of status) {
       // headStatus: 0=absent, 1=unchanged, 2=modified, 3=deleted
       // workdirStatus: 0=absent, 1=unchanged, 2=modified, 3=deleted
       // stageStatus: 0=absent, 1=unchanged, 2=modified, 3=deleted
 
-      // Conflict detection: workdir and stage both modified differently
-      if (workdirStatus === 2 && stageStatus === 2) {
-        result.conflicted.push(filepath);
-      } else if (stageStatus !== 1) {
-        // Staged changes
-        result.staged.push(filepath);
-      } else if (workdirStatus === 2) {
-        // Modified but not staged
-        result.unstaged.push(filepath);
-      } else if (headStatus === 0 && workdirStatus !== 0) {
-        // Untracked file
-        result.untracked.push(filepath);
+      let workingStatus: FileStatus['workingStatus'] = 'unmodified';
+      let stagedStatus: FileStatus['stagedStatus'] = 'unmodified';
+
+      // Untracked file: not in HEAD, modified in workdir, not staged
+      if (headStatus === 0 && workdirStatus === 2 && stageStatus === 0) {
+        workingStatus = 'untracked';
+        untrackedCount++;
       }
+      // Staged file: modified in stage
+      else if (stageStatus === 2 || stageStatus === 3) {
+        stagedStatus = stageStatus === 2 ? 'modified' : 'deleted';
+        stagedCount++;
+        
+        // Also check if workdir has further modifications
+        if (workdirStatus === 2) {
+          workingStatus = 'modified';
+          modifiedCount++;
+        }
+      }
+      // Modified but not staged (and not untracked)
+      else if (workdirStatus === 2 && headStatus !== 0) {
+        workingStatus = 'modified';
+        modifiedCount++;
+      }
+
+      files.push({
+        path: filepath,
+        workingStatus,
+        stagedStatus,
+      });
     }
 
-    return result;
+    return {
+      currentBranch,
+      currentCommitSha,
+      isClean: untrackedCount === 0 && modifiedCount === 0 && stagedCount === 0 && conflictedCount === 0,
+      untrackedCount,
+      modifiedCount,
+      stagedCount,
+      conflictedCount,
+      files,
+      conflicts: [],
+    };
   }
 
   /**
    * Get conflicted files
    */
-  async getConflicts(localPath: string): Promise<string[]> {
+  async getConflicts(localPath: string): Promise<GitConflict[]> {
     const status = await git.statusMatrix({ fs, dir: localPath });
-    const conflicts: string[] = [];
+    const conflicts: GitConflict[] = [];
 
     for (const [filepath, headStatus, workdirStatus, stageStatus] of status) {
       // Conflict: both workdir and stage have modifications
       if (workdirStatus === 2 && stageStatus === 2) {
-        conflicts.push(filepath);
+        conflicts.push({
+          filePath: filepath,
+          status: 'both-modified',
+          resolved: false,
+        });
       }
     }
 
@@ -278,7 +346,7 @@ export class GitService {
     localPath: string,
     ref: string = 'HEAD',
     depth: number = 10
-  ): Promise<CommitInfo[]> {
+  ): Promise<GitCommitInfo[]> {
     const commits = await git.log({
       fs,
       dir: localPath,
@@ -287,18 +355,23 @@ export class GitService {
     });
 
     return commits.map((commit: any) => ({
-      oid: commit.oid,
+      sha: commit.oid,
+      shortSha: commit.oid.slice(0, 7),
       message: commit.commit.message,
+      summary: commit.commit.message.split('\n')[0],
+      body: commit.commit.message.split('\n').slice(1).join('\n').trim(),
       author: {
         name: commit.commit.author.name,
         email: commit.commit.author.email,
-        timestamp: commit.commit.author.timestamp,
+        timestamp: new Date(commit.commit.author.timestamp * 1000).toISOString(),
       },
       committer: {
         name: commit.commit.committer.name,
         email: commit.commit.committer.email,
-        timestamp: commit.commit.committer.timestamp,
+        timestamp: new Date(commit.commit.committer.timestamp * 1000).toISOString(),
       },
+      parents: commit.commit.parent,
+      timestamp: new Date(commit.commit.author.timestamp * 1000).toISOString(),
     }));
   }
 

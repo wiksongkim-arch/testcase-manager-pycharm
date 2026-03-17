@@ -10,6 +10,7 @@
     "clean": "rm -rf dist"
   },
   "devDependencies": {
+    "jest": "^30.3.0",
     "typescript": "^5.8.2"
   },
   "license": "Apache-2.0"
