@@ -1,0 +1,17 @@
+{
+  "name": "@testcase-manager/shared",
+  "version": "0.1.0",
+  "description": "Core type definitions for TestCase Manager",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "node ./node_modules/typescript/bin/tsc",
+    "type-check": "node ./node_modules/typescript/bin/tsc --noEmit",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "jest": "^30.3.0",
+    "typescript": "^5.8.2"
+  },
+  "license": "Apache-2.0"
+}

@@ -1,0 +1,30 @@
+{
+  "name": "testcase-manager",
+  "version": "0.1.0",
+  "description": "A comprehensive test case management system for software quality assurance",
+  "private": true,
+  "license": "Apache-2.0",
+  "author": "TestCase Manager Team",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "tsc -b packages/shared packages/git-core",
+    "test": "npm run build && npx jest --config packages/git-core/jest.config.js"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jest": "^29.5.12",
+    "@types/node": "^25.5.0",
+    "jest": "^29.7.0",
+    "typescript": "^5.8.2"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  }
+}

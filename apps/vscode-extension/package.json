@@ -1,0 +1,128 @@
+{
+  "name": "testcase-manager",
+  "displayName": "TestCase Manager",
+  "description": "测试用例管理工具 - 类 Excel 编辑体验 + Git 版本控制",
+  "version": "0.1.0",
+  "publisher": "testcase-manager",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Other",
+    "Testing"
+  ],
+  "keywords": [
+    "testcase",
+    "testing",
+    "excel",
+    "git"
+  ],
+  "activationEvents": [
+    "onCommand:testcase-manager.open"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "testcase-manager.open",
+        "title": "Open TestCase Manager",
+        "category": "TestCase Manager"
+      },
+      {
+        "command": "testcase-manager.refresh",
+        "title": "Refresh Projects",
+        "category": "TestCase Manager",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "testcase-manager.clone",
+        "title": "Clone Repository",
+        "category": "TestCase Manager"
+      },
+      {
+        "command": "testcase-manager.openProject",
+        "title": "Open Project",
+        "category": "TestCase Manager"
+      },
+      {
+        "command": "testcase-manager.commit",
+        "title": "Commit Changes",
+        "category": "TestCase Manager"
+      },
+      {
+        "command": "testcase-manager.push",
+        "title": "Push Changes",
+        "category": "TestCase Manager"
+      },
+      {
+        "command": "testcase-manager.pull",
+        "title": "Pull Changes",
+        "category": "TestCase Manager"
+      }
+    ],
+    "views": {
+      "explorer": [
+        {
+          "id": "testcaseManagerProjects",
+          "name": "TestCase Projects",
+          "when": "testcase-manager.enabled"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "testcase-manager.refresh",
+          "when": "view == testcaseManagerProjects",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "testcase-manager.openProject",
+          "when": "view == testcaseManagerProjects && viewItem == project",
+          "group": "inline"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "testcase-manager.open"
+        },
+        {
+          "command": "testcase-manager.clone"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "TestCase Manager",
+      "properties": {
+        "testcaseManager.apiUrl": {
+          "type": "string",
+          "default": "http://localhost:3001",
+          "description": "TestCase Manager API 服务地址"
+        },
+        "testcaseManager.defaultAuthor": {
+          "type": "string",
+          "default": "",
+          "description": "默认提交作者信息 (格式: Name <email>)"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "node node_modules/typescript/bin/tsc",
+    "dev": "node node_modules/typescript/bin/tsc --watch",
+    "lint": "eslint src/",
+    "package": "vsce package"
+  },
+  "dependencies": {
+    "axios": "^1.13.6"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.37",
+    "@types/vscode": "^1.110.0",
+    "@vscode/vsce": "^2.22.0",
+    "typescript": "^5.9.3"
+  }
+}
