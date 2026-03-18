@@ -5,6 +5,7 @@ import { errorHandler } from './middleware/error-handler';
 import { projectsRouter } from './routes/projects';
 import { testCasesRouter } from './routes/testcases';
 import { gitRouter } from './routes/git';
+import { excelRouter } from './routes/excel';
 
 export function createServer(): express.Application {
   const app = express();
@@ -21,6 +22,7 @@ export function createServer(): express.Application {
 
   // API Routes
   app.use('/api/projects', projectsRouter);
+  app.use('/api/projects', excelRouter);
   app.use('/api/testcases', testCasesRouter);
   app.use('/api/git', gitRouter);
 
