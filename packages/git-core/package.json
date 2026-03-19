@@ -5,10 +5,10 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc",
+    "build": "node ../../node_modules/typescript/bin/tsc",
     "clean": "rm -rf dist dist-test",
-    "dev": "tsc --watch",
-    "test": "tsc -p tsconfig.test.json && npx jest --config jest.config.js --testPathPattern=dist-test"
+    "dev": "node ../../node_modules/typescript/bin/tsc --watch",
+    "test": "node ../../node_modules/typescript/bin/tsc -p tsconfig.test.json && npx jest --config jest.config.js --testPathPattern=dist-test"
   },
   "dependencies": {
     "@testcase-manager/shared": "file:../shared",

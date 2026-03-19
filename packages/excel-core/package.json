@@ -5,13 +5,13 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
+    "build": "node ../../node_modules/typescript/bin/tsc",
+    "dev": "node ../../node_modules/typescript/bin/tsc --watch",
     "test": "jest",
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@testcase-manager/shared": "0.1.0",
+    "@testcase-manager/shared": "file:../shared",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
