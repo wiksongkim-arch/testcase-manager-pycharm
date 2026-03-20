@@ -29,7 +29,7 @@ export function TestCaseTable({
   onSave,
   onSuiteChange,
 }: TestCaseTableProps) {
-  const hotRef = useRef<HotTable>(null)
+  const hotRef = useRef<any>(null)
   const [data, setData] = useState<any[]>([])
 
   // 将 TestCase 转换为表格数据

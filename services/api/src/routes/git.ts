@@ -19,7 +19,7 @@ function getProjectRepoPath(projectId: string): string {
  */
 router.post('/commit', async (req, res, next) => {
   try {
-    const { projectId } = req.params;
+    const { projectId } = req.params as { projectId: string };
     const { message, author } = req.body;
     
     if (!message) {
@@ -67,7 +67,7 @@ router.post('/commit', async (req, res, next) => {
  */
 router.post('/:projectId/push', async (req, res, next) => {
   try {
-    const { projectId } = req.params;
+    const { projectId } = req.params as { projectId: string };
     const { remote, branch, credentials } = req.body;
     
     const repoPath = getProjectRepoPath(projectId);
@@ -99,7 +99,7 @@ router.post('/:projectId/push', async (req, res, next) => {
  */
 router.post('/:projectId/pull', async (req, res, next) => {
   try {
-    const { projectId } = req.params;
+    const { projectId } = req.params as { projectId: string };
     const { remote, branch, credentials } = req.body;
     
     const repoPath = getProjectRepoPath(projectId);
@@ -131,7 +131,7 @@ router.post('/:projectId/pull', async (req, res, next) => {
  */
 router.get('/:projectId/status', async (req, res, next) => {
   try {
-    const { projectId } = req.params;
+    const { projectId } = req.params as { projectId: string };
     const repoPath = getProjectRepoPath(projectId);
     
     if (!(await fs.pathExists(repoPath))) {
@@ -151,7 +151,7 @@ router.get('/:projectId/status', async (req, res, next) => {
  */
 router.get('/:projectId/branches', async (req, res, next) => {
   try {
-    const { projectId } = req.params;
+    const { projectId } = req.params as { projectId: string };
     const repoPath = getProjectRepoPath(projectId);
     
     if (!(await fs.pathExists(repoPath))) {
@@ -171,7 +171,7 @@ router.get('/:projectId/branches', async (req, res, next) => {
  */
 router.post('/:projectId/branches', async (req, res, next) => {
   try {
-    const { projectId } = req.params;
+    const { projectId } = req.params as { projectId: string };
     const { name } = req.body;
     
     if (!name) {
@@ -202,7 +202,7 @@ router.post('/:projectId/branches', async (req, res, next) => {
  */
 router.post('/:projectId/checkout', async (req, res, next) => {
   try {
-    const { projectId } = req.params;
+    const { projectId } = req.params as { projectId: string };
     const { branch } = req.body;
     
     if (!branch) {
@@ -230,7 +230,7 @@ router.post('/:projectId/checkout', async (req, res, next) => {
  */
 router.get('/:projectId/history', async (req, res, next) => {
   try {
-    const { projectId } = req.params;
+    const { projectId } = req.params as { projectId: string };
     const { depth } = req.query;
     
     const repoPath = getProjectRepoPath(projectId);
@@ -257,7 +257,7 @@ router.get('/:projectId/history', async (req, res, next) => {
  */
 router.get('/:projectId/conflicts', async (req, res, next) => {
   try {
-    const { projectId } = req.params;
+    const { projectId } = req.params as { projectId: string };
     const repoPath = getProjectRepoPath(projectId);
     
     if (!(await fs.pathExists(repoPath))) {
@@ -277,7 +277,7 @@ router.get('/:projectId/conflicts', async (req, res, next) => {
  */
 router.post('/:projectId/resolve', async (req, res, next) => {
   try {
-    const { projectId } = req.params;
+    const { projectId } = req.params as { projectId: string };
     const { filePath, content } = req.body;
     
     if (!filePath) {

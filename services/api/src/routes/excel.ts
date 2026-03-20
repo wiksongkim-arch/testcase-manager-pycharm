@@ -29,7 +29,7 @@ router.post(
   upload.single('file'),
   async (req, res, next) => {
     try {
-      const { projectId } = req.params;
+      const { projectId } = req.params as { projectId: string };
       const file = req.file;
       const { suiteId, columnMapping, startRow } = req.body;
       
@@ -117,7 +117,7 @@ router.post(
  */
 router.get('/export', async (req, res, next) => {
   try {
-    const { projectId } = req.params;
+    const { projectId } = req.params as { projectId: string };
     const { 
       format = 'xlsx', 
       suiteId,
@@ -214,7 +214,7 @@ router.get('/export', async (req, res, next) => {
  */
 router.get('/export/:suiteId', async (req, res, next) => {
   try {
-    const { projectId, suiteId } = req.params;
+    const { projectId, suiteId } = req.params as { projectId: string; suiteId: string };
     const { format = 'xlsx', sheetName } = req.query as { 
       format?: 'xlsx' | 'csv';
       sheetName?: string;

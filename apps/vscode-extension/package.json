@@ -111,7 +111,7 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run build",
-    "build": "node node_modules/typescript/bin/tsc",
+    "build": "tsc",
     "dev": "node node_modules/typescript/bin/tsc --watch",
     "lint": "eslint src/",
     "package": "vsce package"

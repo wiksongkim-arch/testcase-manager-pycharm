@@ -28,7 +28,7 @@ function getSuitePath(projectId: string, suiteId: string): string {
  */
 router.get('/suites', async (req, res, next) => {
   try {
-    const { projectId } = req.params;
+    const { projectId } = req.params as { projectId: string };
     const suitesDir = getSuitesDir(projectId);
     
     if (!(await fs.pathExists(suitesDir))) {
@@ -71,7 +71,7 @@ router.get('/suites', async (req, res, next) => {
  */
 router.get('/suites/:suiteId', async (req, res, next) => {
   try {
-    const { projectId, suiteId } = req.params;
+    const { projectId, suiteId } = req.params as { projectId: string; suiteId: string };
     const suitePath = getSuitePath(projectId, suiteId);
     
     if (!(await fs.pathExists(suitePath))) {
@@ -91,7 +91,7 @@ router.get('/suites/:suiteId', async (req, res, next) => {
  */
 router.put('/suites/:suiteId', async (req, res, next) => {
   try {
-    const { projectId, suiteId } = req.params;
+    const { projectId, suiteId } = req.params as { projectId: string; suiteId: string };
     const updates: Partial<TestCaseFile> = req.body;
     const suitePath = getSuitePath(projectId, suiteId);
     
@@ -119,7 +119,7 @@ router.put('/suites/:suiteId', async (req, res, next) => {
  */
 router.post('/suites', async (req, res, next) => {
   try {
-    const { projectId } = req.params;
+    const { projectId } = req.params as { projectId: string };
     const { name, description } = req.body;
     
     if (!name) {

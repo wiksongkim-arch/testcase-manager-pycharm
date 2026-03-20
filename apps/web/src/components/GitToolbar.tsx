@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Project } from '../api/types'
-import './App.css'
+import '../App.css'
 
 interface GitToolbarProps {
   currentProject: Project | null
