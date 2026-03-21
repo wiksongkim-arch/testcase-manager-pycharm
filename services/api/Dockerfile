@@ -1,10 +1,9 @@
-# 构建阶段
-FROM node:20-alpine AS builder
+FROM node:20-alpine
 
 WORKDIR /app
 
 # 安装构建工具
-RUN apk add --no-cache python3 make g++ git
+RUN apk add --no-cache python3 make g++ git wget
 
 # 安装 pnpm
 RUN npm install -g pnpm
@@ -13,30 +12,18 @@ RUN npm install -g pnpm
 COPY package*.json pnpm-lock.yaml .npmrc pnpm-workspace.yaml ./
 COPY packages ./packages
 COPY scripts ./scripts
+COPY services/api ./services/api
 
-# 安装依赖并构建
+# 安装所有依赖
 RUN pnpm install --frozen-lockfile
+
+# 构建 packages
 RUN pnpm run build
 
-# 复制并构建 API
-COPY services/api ./services/api
+# 构建 API
 WORKDIR /app/services/api
 RUN pnpm install --frozen-lockfile
 RUN pnpm run build
-
-# 生产镜像
-FROM node:20-alpine
-
-WORKDIR /app
-
-# 安装必要工具
-RUN apk add --no-cache git wget
-
-# 从 builder 复制 API 服务（包含所有依赖）
-COPY --from=builder /app/services/api /app
-
-# 复制 packages（workspace 依赖需要）
-COPY --from=builder /app/packages /app/packages
 
 # 创建数据目录
 RUN mkdir -p /data/git-repos
