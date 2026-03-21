@@ -1,3 +1,7 @@
+# 排除所有父目录文件
+../
+
+# 排除开发文件
 node_modules/
 .git/
 .vscode/
@@ -9,3 +13,8 @@ services/
 packages/
 .env
 .env.*
+.env.example
+
+# 排除源代码（只保留 dist）
+src/
+tsconfig.json
