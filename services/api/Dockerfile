@@ -17,8 +17,10 @@ COPY services/api ./services/api
 # 安装所有依赖
 RUN pnpm install --frozen-lockfile
 
-# 构建 packages
-RUN pnpm run build
+# 构建 packages（跳过 web 和 vscode-extension）
+RUN cd packages/shared && pnpm exec tsc && \
+    cd ../git-core && pnpm exec tsc && \
+    cd ../excel-core && pnpm exec tsc
 
 # 构建 API
 WORKDIR /app/services/api
