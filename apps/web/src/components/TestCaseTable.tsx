@@ -175,6 +175,7 @@ export function TestCaseTable({
       </div>
 
       <div className="testcase-table-wrapper">
+        {/* @ts-ignore - Handsontable React 类型兼容性问题 */}
         <HotTable
           ref={hotRef}
           data={data}
