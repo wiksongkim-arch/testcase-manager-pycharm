@@ -35,7 +35,6 @@ COPY apps/web/index.html ./
 COPY apps/web/tsconfig.json ./
 COPY apps/web/tsconfig.node.json ./
 COPY apps/web/vite.config.ts ./
-COPY apps/web/eslint.config.js ./
 
 # 创建 public 目录（如果不存在）
 RUN mkdir -p ./public
