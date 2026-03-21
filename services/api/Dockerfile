@@ -49,11 +49,11 @@ WORKDIR /app
 # 安装 git（用于 git 操作）和 wget（用于健康检查）
 RUN apk add --no-cache git wget
 
-# 复制已构建的 packages（包含 node_modules）
-COPY --from=builder /app/packages ./packages
-
 # 复制 API 服务（包含 node_modules 和 dist）
-COPY --from=builder /app/services/api ./
+COPY --from=builder /app/services/api /app
+
+# 复制已构建的 packages（供 workspace 依赖使用）
+COPY --from=builder /app/packages /app/packages
 
 # 创建数据目录
 RUN mkdir -p /data/git-repos
