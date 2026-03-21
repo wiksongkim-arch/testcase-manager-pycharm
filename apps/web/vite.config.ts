@@ -4,7 +4,12 @@ import path from 'path'
 
 export default defineConfig({
   root: __dirname,
-  plugins: [react()],
+  plugins: [react({ 
+    jsxRuntime: 'automatic',
+    babel: {
+      plugins: []
+    }
+  })],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -18,5 +23,8 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+  },
+  build: {
+    sourcemap: false,
   },
 })
