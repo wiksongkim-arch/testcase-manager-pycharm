@@ -1,16 +1,10 @@
-# 黑名单优先
-**/.git/**
-**/.gitignore
-**/.vscode/**
-**/node_modules/**
-**/*.log
-**/.env*
-**/apps/**
-**/services/**
-**/packages/**
-**/scripts/**
+# 只排除开发文件，保留 node_modules（包含 axios）
+/.git/
+/.gitignore
+/.vscode/
+/*.log
+/.env*
 
-# 如果还是有 ../ 污染，试加这些（部分有效）
-../**/*
-../../**/*
-../../../**/*
+# 排除源代码（只保留 dist）
+/src/
+tsconfig.json
