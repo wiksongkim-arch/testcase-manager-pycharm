@@ -12,9 +12,14 @@ RUN npm install -g pnpm
 # 复制根 package.json 和 pnpm-lock.yaml
 COPY package*.json pnpm-lock.yaml ./
 COPY .npmrc ./
+COPY pnpm-workspace.yaml ./
 
 # 复制 workspace 配置
 COPY packages ./packages
+
+# 复制 scripts 目录（构建需要）
+COPY scripts ./scripts
+RUN mkdir -p logs
 
 # 安装所有依赖
 RUN pnpm install --frozen-lockfile
