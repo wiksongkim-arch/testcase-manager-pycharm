@@ -49,24 +49,11 @@ WORKDIR /app
 # 安装 git（用于 git 操作）和 wget（用于健康检查）
 RUN apk add --no-cache git wget
 
-# 安装 pnpm
-RUN npm install -g pnpm
-
-# 复制根 package.json
-COPY package*.json pnpm-lock.yaml ./
-COPY .npmrc ./
-
-# 复制已构建的 packages
+# 复制已构建的 packages（包含 node_modules）
 COPY --from=builder /app/packages ./packages
 
-# 复制 API 服务文件
-COPY services/api/package*.json ./
-
-# 只安装生产依赖
-RUN pnpm install --prod
-
-# 复制构建产物
-COPY --from=builder /app/services/api/dist ./dist
+# 复制 API 服务（包含 node_modules 和 dist）
+COPY --from=builder /app/services/api ./
 
 # 创建数据目录
 RUN mkdir -p /data/git-repos
