@@ -21,10 +21,6 @@
     "onCommand:testcase-manager.open"
   ],
   "main": "./dist/extension.js",
-  "files": [
-    "dist",
-    "README.md"
-  ],
   "contributes": {
     "commands": [
       {
@@ -118,7 +114,7 @@
     "build": "tsc",
     "dev": "node node_modules/typescript/bin/tsc --watch",
     "lint": "eslint src/",
-    "package": "vsce package --allow-unused-files-patterns"
+    "package": "vsce package"
   },
   "dependencies": {
     "axios": "^1.13.6"
