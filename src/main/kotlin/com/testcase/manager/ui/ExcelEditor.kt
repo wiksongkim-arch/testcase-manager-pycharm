@@ -12,62 +12,59 @@ import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.table.JBTable
 import java.awt.BorderLayout
 import java.awt.Dimension
+import java.awt.event.KeyEvent
+import java.awt.event.MouseAdapter
+import java.awt.event.MouseEvent
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.JTable
-import javax.swing.table.DefaultTableModel
+import javax.swing.KeyStroke
 
 /**
  * Excel 风格编辑器
  * 为测试用例 YAML 文件提供表格编辑界面
+ * 
+ * 功能特性：
+ * - 单元格编辑（文本、数字、下拉选择）
+ * - 行列操作（增删、拖拽、复制粘贴）
+ * - 右键菜单
  */
 class ExcelEditor(
     private val project: Project,
     private val file: VirtualFile
 ) : FileEditor {
-    
+
     private val component: JComponent
     private val table: JBTable
-    private val tableModel: DefaultTableModel
-    
+    private val tableModel: TestCaseTableModel
+    private val transferHandler: ExcelTableTransferHandler
+    private val contextMenu: ExcelContextMenu
+
     companion object {
         val EDITOR_NAME = Key.create<String>("TESTCASE_EXCEL_EDITOR")
     }
-    
+
     init {
         // 创建表格模型
-        tableModel = createTableModel()
-        
+        tableModel = TestCaseTableModel()
+
         // 创建表格组件
         table = createTable()
-        
+
+        // 创建拖拽处理器
+        transferHandler = ExcelTableTransferHandler(tableModel)
+        table.transferHandler = transferHandler
+
+        // 创建右键菜单
+        contextMenu = ExcelContextMenu(table, tableModel)
+
         // 创建主界面
         component = createComponent()
-        
+
         // 加载文件数据
         loadFileData()
     }
-    
-    /**
-     * 创建表格模型
-     */
-    private fun createTableModel(): DefaultTableModel {
-        val columns = arrayOf(
-            "ID",
-            "用例名称", 
-            "优先级",
-            "状态",
-            "测试步骤",
-            "预期结果"
-        )
-        
-        return object : DefaultTableModel(columns, 0) {
-            override fun isCellEditable(row: Int, column: Int): Boolean {
-                return true // 所有单元格可编辑
-            }
-        }
-    }
-    
+
     /**
      * 创建表格组件
      */
@@ -77,25 +74,137 @@ class ExcelEditor(
             autoResizeMode = JTable.AUTO_RESIZE_ALL_COLUMNS
             rowHeight = 30
             preferredScrollableViewportSize = Dimension(800, 600)
-            
+
             // 设置表头
             tableHeader.apply {
                 preferredSize = Dimension(preferredSize.width, 35)
                 reorderingAllowed = true
                 resizingAllowed = true
             }
-            
+
             // 设置选择模式
             setSelectionMode(javax.swing.ListSelectionModel.MULTIPLE_INTERVAL_SELECTION)
             setCellSelectionEnabled(true)
-            
+
             // 设置网格线
             showHorizontalLines = true
             showVerticalLines = true
             gridColor = java.awt.Color(200, 200, 200)
+
+            // 启用拖拽
+            dragEnabled = true
+            dropMode = javax.swing.DropMode.INSERT_ROWS
+
+            // 设置自定义单元格编辑器
+            setupCellEditors()
+
+            // 设置右键菜单
+            setupContextMenu()
+
+            // 设置键盘快捷键
+            setupKeyboardShortcuts()
         }
     }
-    
+
+    /**
+     * 设置单元格编辑器
+     */
+    private fun JTable.setupCellEditors() {
+        for (col in 0 until tableModel.columnCount) {
+            val editor = ExcelCellEditorFactory.createEditor(col)
+            columnModel.getColumn(col).cellEditor = editor
+        }
+    }
+
+    /**
+     * 设置右键菜单
+     */
+    private fun JTable.setupContextMenu() {
+        addMouseListener(object : MouseAdapter() {
+            override fun mousePressed(e: MouseEvent) {
+                if (e.isPopupTrigger) {
+                    showContextMenu(e)
+                }
+            }
+
+            override fun mouseReleased(e: MouseEvent) {
+                if (e.isPopupTrigger) {
+                    showContextMenu(e)
+                }
+            }
+
+            private fun showContextMenu(e: MouseEvent) {
+                // 如果点击位置没有选中行，则选中该行
+                val row = rowAtPoint(e.point)
+                val col = columnAtPoint(e.point)
+
+                if (row >= 0) {
+                    if (!isRowSelected(row)) {
+                        setRowSelectionInterval(row, row)
+                    }
+                    if (col >= 0) {
+                        setColumnSelectionInterval(col, col)
+                    }
+                }
+
+                contextMenu.getPopupMenu().show(e.component, e.x, e.y)
+            }
+        })
+    }
+
+    /**
+     * 设置键盘快捷键
+     */
+    private fun JTable.setupKeyboardShortcuts() {
+        // Ctrl+C 复制
+        getInputMap(JComponent.WHEN_FOCUSED).put(
+            KeyStroke.getKeyStroke(KeyEvent.VK_C, java.awt.event.InputEvent.CTRL_DOWN_MASK),
+            "copy"
+        )
+        actionMap.put("copy", object : javax.swing.AbstractAction() {
+            override fun actionPerformed(e: java.awt.event.ActionEvent?) {
+                transferHandler.copyToClipboard(this@setupKeyboardShortcuts)
+            }
+        })
+
+        // Ctrl+V 粘贴
+        getInputMap(JComponent.WHEN_FOCUSED).put(
+            KeyStroke.getKeyStroke(KeyEvent.VK_V, java.awt.event.InputEvent.CTRL_DOWN_MASK),
+            "paste"
+        )
+        actionMap.put("paste", object : javax.swing.AbstractAction() {
+            override fun actionPerformed(e: java.awt.event.ActionEvent?) {
+                val row = selectedRow
+                val col = selectedColumn
+                if (row >= 0 && col >= 0) {
+                    transferHandler.pasteFromClipboard(this@setupKeyboardShortcuts, row, col)
+                }
+            }
+        })
+
+        // Delete 删除选中行
+        getInputMap(JComponent.WHEN_FOCUSED).put(
+            KeyStroke.getKeyStroke(KeyEvent.VK_DELETE, 0),
+            "deleteRow"
+        )
+        actionMap.put("deleteRow", object : javax.swing.AbstractAction() {
+            override fun actionPerformed(e: java.awt.event.ActionEvent?) {
+                removeSelectedRow()
+            }
+        })
+
+        // Ctrl+N 添加新行
+        getInputMap(JComponent.WHEN_FOCUSED).put(
+            KeyStroke.getKeyStroke(KeyEvent.VK_N, java.awt.event.InputEvent.CTRL_DOWN_MASK),
+            "addRow"
+        )
+        actionMap.put("addRow", object : javax.swing.AbstractAction() {
+            override fun actionPerformed(e: java.awt.event.ActionEvent?) {
+                addRow()
+            }
+        })
+    }
+
     /**
      * 创建主界面组件
      */
@@ -103,47 +212,65 @@ class ExcelEditor(
         return JPanel(BorderLayout()).apply {
             // 添加工具栏
             add(createToolBar(), BorderLayout.NORTH)
-            
+
             // 添加表格（带滚动条）
             add(JBScrollPane(table), BorderLayout.CENTER)
-            
+
             // 添加状态栏
             add(createStatusBar(), BorderLayout.SOUTH)
         }
     }
-    
+
     /**
      * 创建工具栏
      */
     private fun createToolBar(): JComponent {
         return javax.swing.JToolBar().apply {
             isFloatable = false
-            
+
             // 添加行按钮
-            add(javax.swing.JButton("添加行").apply {
+            add(javax.swing.JButton("添加行 (Ctrl+N)").apply {
                 addActionListener { addRow() }
             })
-            
-            add(javax.swing.JButton("删除行").apply {
+
+            add(javax.swing.JButton("删除行 (Del)").apply {
                 addActionListener { removeSelectedRow() }
             })
-            
+
             add(javax.swing.JToolBar.Separator())
-            
+
+            // 插入行按钮
+            add(javax.swing.JButton("上方插入").apply {
+                addActionListener { insertRowAbove() }
+            })
+
+            add(javax.swing.JButton("下方插入").apply {
+                addActionListener { insertRowBelow() }
+            })
+
+            add(javax.swing.JToolBar.Separator())
+
+            // 复制行按钮
+            add(javax.swing.JButton("复制行").apply {
+                addActionListener { copySelectedRow() }
+            })
+
+            add(javax.swing.JToolBar.Separator())
+
             // 保存按钮
             add(javax.swing.JButton("保存").apply {
                 addActionListener { saveFile() }
             })
-            
+
             add(javax.swing.JToolBar.Separator())
-            
+
             // 刷新按钮
             add(javax.swing.JButton("刷新").apply {
                 addActionListener { loadFileData() }
             })
         }
     }
-    
+
     /**
      * 创建状态栏
      */
@@ -152,15 +279,54 @@ class ExcelEditor(
             border = javax.swing.border.EmptyBorder(5, 10, 5, 10)
         }
     }
-    
+
     /**
      * 添加新行
      */
     private fun addRow() {
         tableModel.addRow(arrayOf("", "", "P1", "草稿", "", ""))
+        val newRow = tableModel.rowCount - 1
+        table.setRowSelectionInterval(newRow, newRow)
+        table.scrollRectToVisible(table.getCellRect(newRow, 0, true))
         updateStatusBar()
     }
-    
+
+    /**
+     * 在选中行上方插入新行
+     */
+    private fun insertRowAbove() {
+        val selectedRow = table.selectedRow
+        if (selectedRow >= 0) {
+            tableModel.insertRowAt(selectedRow, arrayOf("", "", "P1", "草稿", "", ""))
+            table.setRowSelectionInterval(selectedRow, selectedRow)
+            updateStatusBar()
+        }
+    }
+
+    /**
+     * 在选中行下方插入新行
+     */
+    private fun insertRowBelow() {
+        val selectedRow = table.selectedRow
+        if (selectedRow >= 0) {
+            tableModel.insertRowAt(selectedRow + 1, arrayOf("", "", "P1", "草稿", "", ""))
+            table.setRowSelectionInterval(selectedRow + 1, selectedRow + 1)
+            updateStatusBar()
+        }
+    }
+
+    /**
+     * 复制选中行
+     */
+    private fun copySelectedRow() {
+        val selectedRow = table.selectedRow
+        if (selectedRow >= 0) {
+            tableModel.copyRow(selectedRow)
+            table.setRowSelectionInterval(selectedRow + 1, selectedRow + 1)
+            updateStatusBar()
+        }
+    }
+
     /**
      * 删除选中行
      */
@@ -171,7 +337,7 @@ class ExcelEditor(
             updateStatusBar()
         }
     }
-    
+
     /**
      * 更新状态栏
      */
@@ -179,22 +345,23 @@ class ExcelEditor(
         val statusBar = (component as JPanel).getComponent(2) as javax.swing.JLabel
         statusBar.text = "就绪 - 共 ${tableModel.rowCount} 行"
     }
-    
+
     /**
      * 加载文件数据
      * 目前显示空白表格，后续实现 YAML 解析
      */
     private fun loadFileData() {
         // 清空现有数据
-        tableModel.rowCount = 0
-        
+        tableModel.clearData()
+
         // 添加示例数据（用于展示）
         tableModel.addRow(arrayOf("TC001", "登录成功", "P0", "已发布", "1. 打开登录页\n2. 输入用户名密码\n3. 点击登录", "登录成功，跳转首页"))
         tableModel.addRow(arrayOf("TC002", "登录失败-密码错误", "P1", "已发布", "1. 打开登录页\n2. 输入错误密码\n3. 点击登录", "提示密码错误"))
-        
+        tableModel.addRow(arrayOf("TC003", "忘记密码", "P2", "草稿", "1. 点击忘记密码\n2. 输入邮箱\n3. 点击发送", "收到重置邮件"))
+
         updateStatusBar()
     }
-    
+
     /**
      * 保存文件
      * 目前仅打印日志，后续实现 YAML 序列化
@@ -208,39 +375,39 @@ class ExcelEditor(
             javax.swing.JOptionPane.INFORMATION_MESSAGE
         )
     }
-    
+
     // ==================== FileEditor 接口实现 ====================
-    
+
     override fun getComponent(): JComponent = component
-    
+
     override fun getPreferredFocusedComponent(): JComponent = table
-    
+
     override fun getName(): String = "Excel Editor"
-    
+
     override fun setState(state: FileEditorState) {
         // 恢复编辑器状态
     }
-    
+
     override fun isModified(): Boolean = false
-    
+
     override fun isValid(): Boolean = file.isValid
-    
+
     override fun addPropertyChangeListener(listener: java.beans.PropertyChangeListener) {
         // 添加属性变更监听器
     }
-    
+
     override fun removePropertyChangeListener(listener: java.beans.PropertyChangeListener) {
         // 移除属性变更监听器
     }
-    
+
     override fun getCurrentLocation(): FileEditorLocation? = null
-    
+
     override fun dispose() {
         Disposer.dispose(this)
     }
-    
+
     override fun <T : Any?> getUserData(key: Key<T>): T? = null
-    
+
     override fun <T : Any?> putUserData(key: Key<T>, value: T?) {
         // 存储用户数据
     }
