@@ -54,9 +54,15 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v5
 
-      # Build plugin
+      # Build plugin with detailed logging
       - name: Build plugin
-        run: ./gradlew buildPlugin
+        run: |
+          echo "=== Starting Build Process ==="
+          ./gradlew clean --info
+          echo "=== Compiling Kotlin ==="
+          ./gradlew compileKotlin --info --stacktrace
+          echo "=== Building Plugin ==="
+          ./gradlew buildPlugin --info --stacktrace
 
       # Prepare plugin archive content for creating artifact
       - name: Prepare Plugin Artifact
