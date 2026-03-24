@@ -182,25 +182,25 @@ class FormattingToolbar(
         defaultColor: Color,
         onColorSelected: (Color) -> Unit
     ): JButton {
-        return JButton(label).apply {
-            preferredSize = Dimension(60, 28)
-            background = defaultColor
-            isOpaque = true
-            contentAreaFilled = true
-            border = BorderFactory.createLineBorder(JBColor.GRAY)
+        val button = JButton(label)
+        button.preferredSize = Dimension(60, 28)
+        button.background = defaultColor
+        button.isOpaque = true
+        button.border = BorderFactory.createLineBorder(JBColor.GRAY)
 
-            addActionListener {
-                val color = JColorChooser.showDialog(
-                    this@FormattingToolbar,
-                    "选择颜色",
-                    background
-                )
-                if (color != null) {
-                    background = color
-                    onColorSelected(color)
-                }
+        button.addActionListener {
+            val color = JColorChooser.showDialog(
+                this@FormattingToolbar,
+                "选择颜色",
+                button.background
+            )
+            if (color != null) {
+                button.background = color
+                onColorSelected(color)
             }
         }
+
+        return button
     }
 
     /**

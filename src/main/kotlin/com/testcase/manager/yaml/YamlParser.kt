@@ -39,8 +39,9 @@ class YamlParser {
             indicatorIndent = 0
         }
 
-        val constructor = Constructor(Map::class.java)
-        yaml = Yaml(constructor, Representer(), options)
+        val loaderOptions = org.yaml.snakeyaml.LoaderOptions()
+        val constructor = Constructor(Map::class.java, loaderOptions)
+        yaml = Yaml(constructor, Representer(options), options)
     }
 
     /**

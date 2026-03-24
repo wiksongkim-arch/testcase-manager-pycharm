@@ -38,7 +38,7 @@ class YamlSerializer {
             width = 120
         }
 
-        val representer = object : Representer() {
+        val representer = object : Representer(options) {
             init {
                 // 添加自定义类型表示
                 addClassTag(TestCaseModel::class.java, Tag.MAP)
