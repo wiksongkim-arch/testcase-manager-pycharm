@@ -141,7 +141,7 @@ class GitIntegration(private val project: Project) {
             val error = ByteArrayOutputStream()
 
             result.setStdoutStream(output)
-            handler.setStderrStream(error)
+            result.setStderrStream(error)
 
             val exitCode = Git.getInstance().runCommand(result).exitCode
 

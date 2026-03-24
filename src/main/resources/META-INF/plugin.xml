@@ -41,6 +41,7 @@
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.lang</depends>
     <depends>org.jetbrains.plugins.yaml</depends>
+    <depends>Git4Idea</depends>
 
     <!-- 扩展点定义 -->
     <extensions defaultExtensionNs="com.intellij">
