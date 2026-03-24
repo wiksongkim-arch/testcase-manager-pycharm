@@ -121,4 +121,12 @@ class ExcelEditor(
     override fun dispose() {
         Disposer.dispose(this)
     }
+
+    override fun <T : Any> getUserData(key: Key<T>): T? {
+        return null
+    }
+
+    override fun <T : Any> putUserData(key: Key<T>, value: T?) {
+        // 不存储用户数据
+    }
 }
