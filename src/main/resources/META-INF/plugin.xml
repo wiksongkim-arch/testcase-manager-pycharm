@@ -14,7 +14,6 @@
             <li>📊 Excel 风格的表格编辑界面</li>
             <li>📝 YAML 测试用例文件解析与展示</li>
             <li>🔄 双向同步（YAML ↔ Excel）</li>
-            <li>📁 Git 集成支持</li>
         </ul>
 
         <h2>使用方法</h2>
@@ -41,7 +40,6 @@
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.lang</depends>
     <depends>org.jetbrains.plugins.yaml</depends>
-    <depends>Git4Idea</depends>
 
     <!-- 扩展点定义 -->
     <extensions defaultExtensionNs="com.intellij">
@@ -59,84 +57,5 @@
             implementation="com.testcase.manager.TestCaseManagerPlugin"/>
 
     </extensions>
-
-    <!-- 操作定义 -->
-    <actions>
-        <!-- Git 对比动作 -->
-        <action id="TestCaseManager.GitCompare"
-                class="com.testcase.manager.actions.GitCompareAction"
-                text="Git 对比"
-                description="显示当前文件与 Git HEAD 版本的对比"
-                icon="AllIcons.Actions.Diff">
-            <add-to-group group-id="EditorPopupMenu" anchor="after" relative-to-action="CompareClipboardWithSelection"/>
-            <add-to-group group-id="ProjectViewPopupMenu" anchor="after" relative-to-action="CompareTwoFiles"/>
-        </action>
-
-        <!-- Git 历史查看动作 -->
-        <action id="TestCaseManager.GitHistory"
-                class="com.testcase.manager.actions.GitHistoryAction"
-                text="Git 历史"
-                description="查看文件的 Git 提交历史"
-                icon="AllIcons.Vcs.History">
-            <add-to-group group-id="EditorPopupMenu" anchor="after" relative-to-action="TestCaseManager.GitCompare"/>
-            <add-to-group group-id="ProjectViewPopupMenu" anchor="after" relative-to-action="TestCaseManager.GitCompare"/>
-        </action>
-
-        <!-- Git 分支信息动作 -->
-        <action id="TestCaseManager.GitBranchInfo"
-                class="com.testcase.manager.actions.GitBranchInfoAction"
-                text="Git 分支信息"
-                description="显示当前分支信息"
-                icon="AllIcons.Vcs.BranchNode">
-            <add-to-group group-id="EditorPopupMenu" anchor="after" relative-to-action="TestCaseManager.GitHistory"/>
-        </action>
-
-        <!-- Git 刷新状态动作 -->
-        <action id="TestCaseManager.GitRefreshStatus"
-                class="com.testcase.manager.actions.GitRefreshStatusAction"
-                text="刷新 Git 状态"
-                description="刷新当前文件的 Git 状态"
-                icon="AllIcons.Actions.Refresh">
-            <add-to-group group-id="EditorPopupMenu" anchor="after" relative-to-action="TestCaseManager.GitBranchInfo"/>
-        </action>
-
-        <!-- 查看历史版本动作 -->
-        <action id="TestCaseManager.ViewHistory"
-                class="com.testcase.manager.git.ViewHistoryAction"
-                text="查看历史版本..."
-                description="查看文件的 Git 提交历史和版本"
-                icon="AllIcons.Vcs.History">
-            <add-to-group group-id="EditorPopupMenu" anchor="after" relative-to-action="TestCaseManager.GitRefreshStatus"/>
-            <add-to-group group-id="ProjectViewPopupMenu" anchor="after" relative-to-action="TestCaseManager.GitRefreshStatus"/>
-        </action>
-
-        <!-- 解决合并冲突动作 -->
-        <action id="TestCaseManager.ResolveConflicts"
-                class="com.testcase.manager.git.ResolveConflictsAction"
-                text="解决合并冲突..."
-                description="打开三方合并对话框解决冲突"
-                icon="AllIcons.Vcs.Merge">
-            <add-to-group group-id="EditorPopupMenu" anchor="after" relative-to-action="TestCaseManager.ViewHistory"/>
-        </action>
-
-        <!-- 回滚到上一版本动作 -->
-        <action id="TestCaseManager.RollbackPrevious"
-                class="com.testcase.manager.git.RollbackToPreviousAction"
-                text="回滚到上一版本"
-                description="将文件回滚到上一个 Git 提交版本"
-                icon="AllIcons.Actions.Rollback">
-            <add-to-group group-id="EditorPopupMenu" anchor="after" relative-to-action="TestCaseManager.ResolveConflicts"/>
-            <add-to-group group-id="ProjectViewPopupMenu" anchor="after" relative-to-action="TestCaseManager.ResolveConflicts"/>
-        </action>
-
-        <!-- 与版本比较动作 -->
-        <action id="TestCaseManager.CompareWithVersion"
-                class="com.testcase.manager.git.CompareWithVersionAction"
-                text="与版本比较..."
-                description="将当前文件与指定 Git 版本进行比较"
-                icon="AllIcons.Actions.Diff">
-            <add-to-group group-id="EditorPopupMenu" anchor="after" relative-to-action="TestCaseManager.RollbackPrevious"/>
-        </action>
-    </actions>
 
 </idea-plugin>
