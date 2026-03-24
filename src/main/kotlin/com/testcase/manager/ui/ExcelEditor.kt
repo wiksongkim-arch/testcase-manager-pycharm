@@ -10,6 +10,8 @@ import com.intellij.openapi.util.Key
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.table.JBTable
+import com.testcase.manager.git.GitIntegration
+import com.testcase.manager.git.GitStatusIndicator
 import java.awt.BorderLayout
 import java.awt.Dimension
 import java.awt.event.KeyEvent
@@ -39,12 +41,17 @@ class ExcelEditor(
     private val tableModel: TestCaseTableModel
     private val transferHandler: ExcelTableTransferHandler
     private val contextMenu: ExcelContextMenu
+    private val gitStatusIndicator: GitStatusIndicator
+    private val gitIntegration: GitIntegration
 
     companion object {
         val EDITOR_NAME = Key.create<String>("TESTCASE_EXCEL_EDITOR")
     }
 
     init {
+        // 初始化 Git 集成
+        gitIntegration = GitIntegration.getInstance(project)
+
         // 创建表格模型
         tableModel = TestCaseTableModel()
 
@@ -58,11 +65,17 @@ class ExcelEditor(
         // 创建右键菜单
         contextMenu = ExcelContextMenu(table, tableModel)
 
+        // 创建 Git 状态指示器
+        gitStatusIndicator = GitStatusIndicator(project, file)
+
         // 创建主界面
         component = createComponent()
 
         // 加载文件数据
         loadFileData()
+
+        // 刷新 Git 状态
+        refreshGitStatus()
     }
 
     /**
@@ -210,14 +223,18 @@ class ExcelEditor(
      */
     private fun createComponent(): JComponent {
         return JPanel(BorderLayout()).apply {
+            // 添加 Git 状态指示器
+            add(gitStatusIndicator, BorderLayout.NORTH)
+
             // 添加工具栏
-            add(createToolBar(), BorderLayout.NORTH)
+            add(createToolBar(), BorderLayout.CENTER)
 
-            // 添加表格（带滚动条）
-            add(JBScrollPane(table), BorderLayout.CENTER)
+            // 创建内容面板（包含表格）
+            val contentPanel = JPanel(BorderLayout())
+            contentPanel.add(JBScrollPane(table), BorderLayout.CENTER)
+            contentPanel.add(createStatusBar(), BorderLayout.SOUTH)
 
-            // 添加状态栏
-            add(createStatusBar(), BorderLayout.SOUTH)
+            add(contentPanel, BorderLayout.SOUTH)
         }
     }
 
@@ -267,6 +284,20 @@ class ExcelEditor(
             // 刷新按钮
             add(javax.swing.JButton("刷新").apply {
                 addActionListener { loadFileData() }
+            })
+
+            add(javax.swing.JToolBar.Separator())
+
+            // Git 对比按钮
+            add(javax.swing.JButton("Git 对比").apply {
+                addActionListener { showGitDiff() }
+            })
+
+            add(javax.swing.JToolBar.Separator())
+
+            // Git 状态刷新按钮
+            add(javax.swing.JButton("刷新 Git 状态").apply {
+                addActionListener { refreshGitStatus() }
             })
         }
     }
@@ -344,6 +375,51 @@ class ExcelEditor(
     private fun updateStatusBar() {
         val statusBar = (component as JPanel).getComponent(2) as javax.swing.JLabel
         statusBar.text = "就绪 - 共 ${tableModel.rowCount} 行"
+    }
+
+    /**
+     * 显示 Git Diff 对比视图
+     */
+    private fun showGitDiff() {
+        if (!gitIntegration.isGitEnabled()) {
+            javax.swing.JOptionPane.showMessageDialog(
+                component,
+                "当前项目未启用 Git 版本控制",
+                "Git 不可用",
+                javax.swing.JOptionPane.WARNING_MESSAGE
+            )
+            return
+        }
+
+        if (!gitIntegration.isFileUnderGit(file)) {
+            javax.swing.JOptionPane.showMessageDialog(
+                component,
+                "文件 '${file.name}' 不在 Git 版本控制下",
+                "Git 对比",
+                javax.swing.JOptionPane.INFORMATION_MESSAGE
+            )
+            return
+        }
+
+        try {
+            // 使用 IntelliJ 内置 Diff 工具
+            val diffHelper = com.testcase.manager.git.DiffRequestHelper(project)
+            diffHelper.showDiffWithHead(file)
+        } catch (e: Exception) {
+            javax.swing.JOptionPane.showMessageDialog(
+                component,
+                "打开对比视图失败: ${e.message}",
+                "错误",
+                javax.swing.JOptionPane.ERROR_MESSAGE
+            )
+        }
+    }
+
+    /**
+     * 刷新 Git 状态
+     */
+    private fun refreshGitStatus() {
+        gitStatusIndicator.updateStatus()
     }
 
     /**

@@ -98,6 +98,22 @@ class YamlSerializer {
     }
 
     /**
+     * 序列化单个测试用例为 YAML 字符串
+     *
+     * @param testCase 测试用例对象
+     * @return YAML 字符串
+     */
+    fun serializeSingleTestCase(testCase: TestCase): String {
+        return try {
+            val data = serializeTestCase(testCase)
+            yaml.dump(data)
+        } catch (e: Exception) {
+            logger.error("Failed to serialize single test case", e)
+            throw YamlSerializeException("Failed to serialize test case: ${e.message}", e)
+        }
+    }
+
+    /**
      * 序列化单个测试用例
      *
      * @param testCase 测试用例对象

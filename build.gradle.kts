@@ -21,7 +21,8 @@ dependencies {
         create("PY", "2023.3.5")
         bundledPlugins(
             listOf(
-                "org.jetbrains.plugins.yaml"
+                "org.jetbrains.plugins.yaml",
+                "Git4Idea"
             )
         )
         testFramework(TestFrameworkType.Platform)
