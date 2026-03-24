@@ -13,6 +13,7 @@ import javax.swing.*
 import javax.swing.event.DocumentEvent
 import javax.swing.event.DocumentListener
 import javax.swing.table.DefaultTableModel
+import javax.swing.ListSelectionModel
 
 /**
  * 公式编辑器对话框

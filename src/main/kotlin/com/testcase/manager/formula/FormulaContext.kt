@@ -144,11 +144,11 @@ class DefaultFormulaContext(
                 if (arguments.size < 2) {
                     return FormulaValue.Error("IF requires at least 2 arguments")
                 }
-                val condition = arguments[0].toBoolean()
+                val condition = arguments[0].asBoolean()
                 return if (condition) {
                     arguments[1]
                 } else {
-                    arguments.getOrNull(2) ?: FormulaValue.Boolean(false)
+                    arguments.getOrNull(2) ?: FormulaValue.Bool(false)
                 }
             }
         })
@@ -156,14 +156,14 @@ class DefaultFormulaContext(
         // AND 函数
         registerFunction("AND", object : FormulaFunction {
             override fun execute(arguments: List<FormulaValue>): FormulaValue {
-                return FormulaValue.Boolean(arguments.all { it.toBoolean() })
+                return FormulaValue.Bool(arguments.all { it.asBoolean() })
             }
         })
 
         // OR 函数
         registerFunction("OR", object : FormulaFunction {
             override fun execute(arguments: List<FormulaValue>): FormulaValue {
-                return FormulaValue.Boolean(arguments.any { it.toBoolean() })
+                return FormulaValue.Bool(arguments.any { it.asBoolean() })
             }
         })
 
@@ -173,7 +173,7 @@ class DefaultFormulaContext(
                 if (arguments.isEmpty()) {
                     return FormulaValue.Error("NOT requires 1 argument")
                 }
-                return FormulaValue.Boolean(!arguments[0].toBoolean())
+                return FormulaValue.Bool(!arguments[0].asBoolean())
             }
         })
 
@@ -183,11 +183,11 @@ class DefaultFormulaContext(
                 val result = StringBuilder()
                 for (arg in arguments) {
                     when (arg) {
-                        is FormulaValue.List -> result.append(arg.values.joinToString("") { it.toText() })
-                        else -> result.append(arg.toText())
+                        is FormulaValue.List -> result.append(arg.values.joinToString("") { it.asString() })
+                        else -> result.append(arg.asString())
                     }
                 }
-                return FormulaValue.String(result.toString())
+                return FormulaValue.Str(result.toString())
             }
         })
 
@@ -205,9 +205,9 @@ class DefaultFormulaContext(
                 if (arguments.isEmpty()) {
                     return FormulaValue.Error("LEFT requires at least 1 argument")
                 }
-                val text = arguments[0].toText()
+                val text = arguments[0].asString()
                 val length = arguments.getOrNull(1)?.toNumber()?.toInt() ?: 1
-                return FormulaValue.String(text.take(length))
+                return FormulaValue.Str(text.take(length.coerceAtLeast(0)))
             }
         })
 
@@ -217,9 +217,9 @@ class DefaultFormulaContext(
                 if (arguments.isEmpty()) {
                     return FormulaValue.Error("RIGHT requires at least 1 argument")
                 }
-                val text = arguments[0].toText()
+                val text = arguments[0].asString()
                 val length = arguments.getOrNull(1)?.toNumber()?.toInt() ?: 1
-                return FormulaValue.String(text.takeLast(length))
+                return FormulaValue.Str(text.takeLast(length.coerceAtLeast(0)))
             }
         })
 
@@ -229,12 +229,12 @@ class DefaultFormulaContext(
                 if (arguments.size < 2) {
                     return FormulaValue.Error("MID requires at least 2 arguments")
                 }
-                val text = arguments[0].toText()
+                val text = arguments[0].asString()
                 val start = arguments[1].toNumber().toInt().coerceAtLeast(1)
                 val length = arguments.getOrNull(2)?.toNumber()?.toInt() ?: (text.length - start + 1)
                 val actualStart = (start - 1).coerceIn(0, text.length)
                 val actualLength = length.coerceAtLeast(0)
-                return FormulaValue.String(text.substring(actualStart, (actualStart + actualLength).coerceAtMost(text.length)))
+                return FormulaValue.Str(text.substring(actualStart, (actualStart + actualLength).coerceAtMost(text.length)))
             }
         })
 
@@ -244,7 +244,7 @@ class DefaultFormulaContext(
                 if (arguments.isEmpty()) {
                     return FormulaValue.Error("LEN requires 1 argument")
                 }
-                return FormulaValue.Number(arguments[0].toText().length.toDouble())
+                return FormulaValue.Number(arguments[0].asString().length.toDouble())
             }
         })
 
@@ -254,7 +254,7 @@ class DefaultFormulaContext(
                 if (arguments.isEmpty()) {
                     return FormulaValue.Error("TRIM requires 1 argument")
                 }
-                return FormulaValue.String(arguments[0].toText().trim())
+                return FormulaValue.Str(arguments[0].asString().trim())
             }
         })
 
@@ -264,7 +264,7 @@ class DefaultFormulaContext(
                 if (arguments.isEmpty()) {
                     return FormulaValue.Error("UPPER requires 1 argument")
                 }
-                return FormulaValue.String(arguments[0].toText().uppercase())
+                return FormulaValue.Str(arguments[0].asString().uppercase())
             }
         })
 
@@ -274,7 +274,7 @@ class DefaultFormulaContext(
                 if (arguments.isEmpty()) {
                     return FormulaValue.Error("LOWER requires 1 argument")
                 }
-                return FormulaValue.String(arguments[0].toText().lowercase())
+                return FormulaValue.Str(arguments[0].asString().lowercase())
             }
         })
 
@@ -307,7 +307,7 @@ class DefaultFormulaContext(
                 if (arguments.isEmpty()) {
                     return FormulaValue.Error("ISBLANK requires 1 argument")
                 }
-                return FormulaValue.Boolean(arguments[0] is FormulaValue.Empty || arguments[0].toText().isEmpty())
+                return FormulaValue.Bool(arguments[0] is FormulaValue.Empty || arguments[0].asString().isEmpty())
             }
         })
 
@@ -317,7 +317,7 @@ class DefaultFormulaContext(
                 if (arguments.isEmpty()) {
                     return FormulaValue.Error("ISNUMBER requires 1 argument")
                 }
-                return FormulaValue.Boolean(arguments[0] is FormulaValue.Number)
+                return FormulaValue.Bool(arguments[0] is FormulaValue.Number)
             }
         })
 
@@ -327,7 +327,7 @@ class DefaultFormulaContext(
                 if (arguments.isEmpty()) {
                     return FormulaValue.Error("ISTEXT requires 1 argument")
                 }
-                return FormulaValue.Boolean(arguments[0] is FormulaValue.String)
+                return FormulaValue.Bool(arguments[0] is FormulaValue.Str)
             }
         })
     }
@@ -339,9 +339,9 @@ class DefaultFormulaContext(
         return when (value) {
             null -> FormulaValue.Empty
             is Number -> FormulaValue.Number(value.toDouble())
-            is kotlin.String -> FormulaValue.String(value)
-            is kotlin.Boolean -> FormulaValue.Boolean(value)
-            else -> FormulaValue.String(value.toString())
+            is kotlin.String -> FormulaValue.Str(value)
+            is kotlin.Boolean -> FormulaValue.Bool(value)
+            else -> FormulaValue.Str(value.toString())
         }
     }
 }
