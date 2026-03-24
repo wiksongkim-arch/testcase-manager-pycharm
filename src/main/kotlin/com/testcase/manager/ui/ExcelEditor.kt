@@ -15,8 +15,6 @@ import com.testcase.manager.model.TestCaseModel
 import com.testcase.manager.yaml.YamlParser
 import com.testcase.manager.yaml.YamlSerializer
 import java.awt.BorderLayout
-import java.awt.event.MouseAdapter
-import java.awt.event.MouseEvent
 import javax.swing.JComponent
 import javax.swing.JPanel
 
@@ -57,21 +55,6 @@ class ExcelEditor(
             columnModel.getColumn(3).preferredWidth = 80
             columnModel.getColumn(4).preferredWidth = 200
             columnModel.getColumn(5).preferredWidth = 200
-
-            // 添加右键菜单
-            addMouseListener(object : MouseAdapter() {
-                override fun mousePressed(e: MouseEvent) {
-                    if (e.isPopupTrigger) {
-                        showContextMenu(e)
-                    }
-                }
-
-                override fun mouseReleased(e: MouseEvent) {
-                    if (e.isPopupTrigger) {
-                        showContextMenu(e)
-                    }
-                }
-            })
         }
 
         // 创建主面板
@@ -115,58 +98,6 @@ class ExcelEditor(
             com.intellij.openapi.diagnostic.Logger.getInstance(ExcelEditor::class.java)
                 .error("Failed to save YAML", e)
         }
-    }
-
-    /**
-     * 显示右键菜单
-     */
-    private fun showContextMenu(e: MouseEvent) {
-        val row = table.rowAtPoint(e.point)
-        if (row >= 0) {
-            table.setRowSelectionInterval(row, row)
-        }
-
-        val menu = javax.swing.JPopupMenu()
-
-        menu.add(javax.swing.JMenuItem("在上方插入行").apply {
-            addActionListener {
-                val newRow = if (row >= 0) row else 0
-                tableModel.insertRow(newRow, createEmptyTestCase())
-            }
-        })
-
-        menu.add(javax.swing.JMenuItem("在下方插入行").apply {
-            addActionListener {
-                val newRow = if (row >= 0) row + 1 else tableModel.rowCount
-                tableModel.insertRow(newRow, createEmptyTestCase())
-            }
-        })
-
-        menu.add(javax.swing.JSeparator())
-
-        menu.add(javax.swing.JMenuItem("删除行").apply {
-            addActionListener {
-                if (row >= 0) {
-                    tableModel.removeRow(row)
-                }
-            }
-        })
-
-        menu.show(e.component, e.x, e.y)
-    }
-
-    /**
-     * 创建空测试用例
-     */
-    private fun createEmptyTestCase(): TestCase {
-        return TestCase(
-            id = "TC${String.format("%03d", tableModel.rowCount + 1)}",
-            name = "",
-            priority = com.testcase.manager.model.Priority.P2,
-            status = com.testcase.manager.model.Status.DRAFT,
-            steps = emptyList(),
-            expected = ""
-        )
     }
 
     override fun getComponent(): JComponent = component

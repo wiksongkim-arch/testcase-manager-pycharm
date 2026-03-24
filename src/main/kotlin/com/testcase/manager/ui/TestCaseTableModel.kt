@@ -1,5 +1,8 @@
 package com.testcase.manager.ui
 
+import com.testcase.manager.model.Priority
+import com.testcase.manager.model.Status
+import com.testcase.manager.model.TestCase
 import javax.swing.table.DefaultTableModel
 
 /**
@@ -52,7 +55,58 @@ class TestCaseTableModel : DefaultTableModel() {
     override fun isCellEditable(row: Int, column: Int): Boolean = columnEditable[column]
 
     /**
+     * 添加测试用例行
+     */
+    fun addRow(testCase: TestCase) {
+        addRow(arrayOf(
+            testCase.id,
+            testCase.name,
+            testCase.priority.value,
+            testCase.status.value,
+            testCase.steps.joinToString("\n"),
+            testCase.expected
+        ))
+    }
+
+    /**
+     * 获取所有测试用例
+     */
+    fun getAllTestCases(): List<TestCase> {
+        return (0 until rowCount).map { row ->
+            TestCase(
+                id = getValueAt(row, 0)?.toString() ?: "",
+                name = getValueAt(row, 1)?.toString() ?: "",
+                priority = Priority.fromValue(getValueAt(row, 2)?.toString() ?: "P2"),
+                status = Status.fromValue(getValueAt(row, 3)?.toString() ?: "草稿"),
+                steps = getValueAt(row, 4)?.toString()?.split("\n")?.filter { it.isNotEmpty() } ?: emptyList(),
+                expected = getValueAt(row, 5)?.toString() ?: ""
+            )
+        }
+    }
+
+    /**
+     * 清空所有数据
+     */
+    fun clear() {
+        rowCount = 0
+    }
+
+    /**
      * 在指定位置插入新行
+     */
+    fun insertRow(row: Int, testCase: TestCase) {
+        insertRow(row, arrayOf(
+            testCase.id,
+            testCase.name,
+            testCase.priority.value,
+            testCase.status.value,
+            testCase.steps.joinToString("\n"),
+            testCase.expected
+        ))
+    }
+
+    /**
+     * 在指定位置插入新行（兼容旧代码）
      */
     fun insertRowAt(row: Int, data: Array<Any?>) {
         if (row < 0 || row > rowCount) {
@@ -117,7 +171,7 @@ class TestCaseTableModel : DefaultTableModel() {
     }
 
     /**
-     * 清空所有数据
+     * 清空所有数据（兼容旧代码）
      */
     fun clearData() {
         rowCount = 0
