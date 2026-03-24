@@ -34,20 +34,45 @@ TestCase Manager 是一个 PyCharm 插件，为测试用例 YAML 文件提供 Ex
 
 #### 环境要求
 - PyCharm 2023.3.5 或更高版本
-- Java 17
-- Git（可选，用于 Git 集成功能）
+- Java 17（脚本会自动检测并安装）
 
-#### 安装步骤
+#### 安装步骤（推荐 - 自动安装依赖）
 
-**方式一：从源码构建**
+**智能安装脚本（自动安装缺失依赖）**
+
+```bash
+# Linux/Mac - 自动检测并安装 Java
+./local-test-auto.sh
+
+# Windows - 自动检测并安装 Java
+local-test-auto.bat
+```
+
+脚本会自动：
+- 检测 Java 环境，未安装则自动安装
+- 检测 Gradle Wrapper，不存在则自动生成
+- 创建默认的 gradle.properties
+- 执行完整的构建流程
+- 生成详细的日志和报告
+
+#### 手动安装步骤
 
 ```bash
 # 1. 克隆项目
 git clone https://github.com/wiksongkim-arch/testcase-manager-pycharm.git
 cd testcase-manager-pycharm
 
-# 2. 运行测试脚本
+# 2. 确保已安装 Java 17
+java -version
+
+# 3. 运行构建脚本
 ./local-test.sh          # Linux/Mac
+# 或
+local-test.bat           # Windows
+
+# 4. 在 PyCharm 中安装插件
+# Settings → Plugins → Install from disk → 选择 build/distributions/*.zip
+```
 # 或
 local-test.bat           # Windows
 
