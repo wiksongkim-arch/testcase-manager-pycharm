@@ -1,114 +1,90 @@
 #!/bin/bash
-# TestCase Manager 构建脚本
-# 使用方法: ./build.sh
+# TestCase Manager Build Script
 
-set -e  # 遇到错误立即退出
-
-# 颜色定义
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
-
-log_info() {
-    echo -e "${BLUE}[INFO]${NC} $1"
-}
-
-log_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
-}
-
-log_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
-
-log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
+set -e
 
 echo "========================================"
-echo "TestCase Manager 构建脚本"
+echo "TestCase Manager Build Script"
 echo "========================================"
 echo ""
 
-# 检查 Java
-log_info "检查 Java 环境..."
+# Check Java
+echo "[INFO] Checking Java..."
 if ! command -v java &> /dev/null; then
-    log_error "Java 未安装"
-    echo "请安装 Java 17: https://adoptium.net/"
+    echo "[ERROR] Java not found"
+    echo "Please install Java 17: https://adoptium.net/"
     exit 1
 fi
 
 JAVA_VERSION=$(java -version 2>&1 | head -n 1 | cut -d'"' -f2)
-log_info "Java 版本: $JAVA_VERSION"
+echo "[INFO] Java version: $JAVA_VERSION"
 
-# 提取主版本号
+# Extract major version
 JAVA_MAJOR=$(echo "$JAVA_VERSION" | cut -d'.' -f1)
 if [ "$JAVA_MAJOR" = "1" ]; then
     JAVA_MAJOR=$(echo "$JAVA_VERSION" | cut -d'.' -f2)
 fi
 
 if [ "$JAVA_MAJOR" -lt 17 ]; then
-    log_error "Java 版本过低: $JAVA_VERSION"
-    log_info "需要 Java 17 或更高版本"
-    echo "请安装 Java 17: https://adoptium.net/"
+    echo "[ERROR] Java version too old: $JAVA_VERSION"
+    echo "Java 17 or higher is required"
+    echo "Please install Java 17: https://adoptium.net/"
     exit 1
 fi
 
-log_success "Java 版本符合要求"
+echo "[SUCCESS] Java version OK"
 
-# 检查 Gradle Wrapper
-log_info "检查 Gradle Wrapper..."
+# Check Gradle Wrapper
+echo "[INFO] Checking Gradle Wrapper..."
 if [ ! -f "./gradlew" ]; then
-    log_error "Gradle Wrapper 不存在"
-    echo "请运行: gradle wrapper"
+    echo "[ERROR] Gradle Wrapper not found"
+    echo "Please run: gradle wrapper"
     exit 1
 fi
 
-log_success "Gradle Wrapper 存在"
+echo "[SUCCESS] Gradle Wrapper found"
 
-# 清理旧构建
-log_info "清理旧构建..."
+# Clean
+echo "[INFO] Cleaning..."
 ./gradlew clean --quiet || true
 
-# 编译
-log_info "编译项目..."
+# Compile
+echo "[INFO] Compiling..."
 if ./gradlew compileKotlin --quiet; then
-    log_success "编译成功"
+    echo "[SUCCESS] Compile OK"
 else
-    log_error "编译失败"
-    echo "请检查错误信息 above"
+    echo "[ERROR] Compile failed"
     exit 1
 fi
 
-# 构建插件
-log_info "构建插件..."
+# Build
+echo "[INFO] Building plugin..."
 if ./gradlew buildPlugin --quiet; then
-    log_success "构建成功"
+    echo "[SUCCESS] Build OK"
 else
-    log_error "构建失败"
+    echo "[ERROR] Build failed"
     exit 1
 fi
 
-# 检查构建产物
+# Check output
 if [ -f "build/distributions"/*.zip ]; then
     PLUGIN_FILE=$(ls -t build/distributions/*.zip | head -1)
-    log_success "插件包: $PLUGIN_FILE"
+    echo ""
+    echo "[SUCCESS] Plugin package:"
     ls -lh "$PLUGIN_FILE"
 else
-    log_error "未找到插件包"
+    echo "[ERROR] Plugin package not found"
     exit 1
 fi
 
 echo ""
 echo "========================================"
-echo "构建完成!"
+echo "Build Complete!"
 echo "========================================"
 echo ""
-echo "安装步骤:"
-echo "1. 打开 PyCharm"
+echo "Install steps:"
+echo "1. Open PyCharm"
 echo "2. Settings → Plugins → Install from disk"
-echo "3. 选择: $PLUGIN_FILE"
-echo "4. 重启 PyCharm"
+echo "3. Select: $PLUGIN_FILE"
+echo "4. Restart PyCharm"
 echo ""

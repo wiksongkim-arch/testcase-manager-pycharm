@@ -1,104 +1,112 @@
 @echo off
-REM TestCase Manager 构建脚本
-REM 使用方法: .\build.bat
+chcp 65001 > nul 2>&1
+REM TestCase Manager 构建脚本 - Windows
+
+setlocal EnableDelayedExpansion
 
 echo ========================================
-echo TestCase Manager 构建脚本
+echo TestCase Manager Build Script
 echo ========================================
 echo.
 
 REM 检查 Java
-echo [INFO] 检查 Java 环境...
+echo [INFO] Checking Java...
 
 java -version > nul 2>&1
 if %errorlevel% neq 0 (
-    echo [ERROR] Java 未安装
-    echo 请安装 Java 17: https://adoptium.net/
+    echo [ERROR] Java not found
+    echo Please install Java 17: https://adoptium.net/
     pause
     exit /b 1
 )
 
+REM 获取 Java 版本
 for /f "tokens=3" %%g in ('java -version 2^>^&1 ^| findstr /i "version"') do (
-    set JAVA_VERSION=%%g
-    set JAVA_VERSION=!JAVA_VERSION:"=!
+    set "JAVA_VERSION=%%g"
+    set "JAVA_VERSION=!JAVA_VERSION:"=!"
 )
 
-echo [INFO] Java 版本: !JAVA_VERSION!
+echo [INFO] Java version: !JAVA_VERSION!
 
 REM 提取主版本号
-for /f "tokens=1 delims=." %%v in ("!JAVA_VERSION!") do set JAVA_MAJOR=%%v
+for /f "tokens=1 delims=." %%v in ("!JAVA_VERSION!") do set "JAVA_MAJOR=%%v"
 if "!JAVA_MAJOR!"=="1" (
-    for /f "tokens=2 delims=." %%v in ("!JAVA_VERSION!") do set JAVA_MAJOR=%%v
+    for /f "tokens=2 delims=." %%v in ("!JAVA_VERSION!") do set "JAVA_MAJOR=%%v"
 )
 
+REM 检查版本
 if !JAVA_MAJOR! LSS 17 (
-    echo [ERROR] Java 版本过低: !JAVA_VERSION!
-    echo 需要 Java 17 或更高版本
-    echo 请安装 Java 17: https://adoptium.net/
+    echo [ERROR] Java version too old: !JAVA_VERSION!
+    echo Java 17 or higher is required
+    echo Please install Java 17: https://adoptium.net/
     pause
     exit /b 1
 )
 
-echo [SUCCESS] Java 版本符合要求
+echo [SUCCESS] Java version OK
 
 REM 检查 Gradle Wrapper
-echo [INFO] 检查 Gradle Wrapper...
+echo [INFO] Checking Gradle Wrapper...
 
 if not exist "gradlew.bat" (
-    echo [ERROR] Gradle Wrapper 不存在
-    echo 请运行: gradle wrapper
+    echo [ERROR] Gradle Wrapper not found
+    echo Please run: gradle wrapper
     pause
     exit /b 1
 )
 
-echo [SUCCESS] Gradle Wrapper 存在
+echo [SUCCESS] Gradle Wrapper found
 
-REM 清理旧构建
-echo [INFO] 清理旧构建...
-call gradlew.bat clean --quiet 2> nul || echo [WARNING] 清理警告
+REM 清理
+echo [INFO] Cleaning...
+call gradlew.bat clean --quiet 2> nul
+if %errorlevel% neq 0 (
+    echo [WARNING] Clean warning
+)
 
 REM 编译
-echo [INFO] 编译项目...
+echo [INFO] Compiling...
 call gradlew.bat compileKotlin --quiet
 if %errorlevel% neq 0 (
-    echo [ERROR] 编译失败
+    echo [ERROR] Compile failed
     pause
     exit /b 1
 )
 
-echo [SUCCESS] 编译成功
+echo [SUCCESS] Compile OK
 
-REM 构建插件
-echo [INFO] 构建插件...
+REM 构建
+echo [INFO] Building plugin...
 call gradlew.bat buildPlugin --quiet
 if %errorlevel% neq 0 (
-    echo [ERROR] 构建失败
+    echo [ERROR] Build failed
     pause
     exit /b 1
 )
 
-echo [SUCCESS] 构建成功
+echo [SUCCESS] Build OK
 
-REM 检查构建产物
+REM 检查产物
 if exist "build\distributions\*.zip" (
-    echo [SUCCESS] 插件包:
+    echo.
+    echo [SUCCESS] Plugin package:
     dir /b build\distributions\*.zip
 ) else (
-    echo [ERROR] 未找到插件包
+    echo [ERROR] Plugin package not found
     pause
     exit /b 1
 )
 
 echo.
 echo ========================================
-echo 构建完成!
+echo Build Complete!
 echo ========================================
 echo.
-echo 安装步骤:
-echo 1. 打开 PyCharm
-echo 2. Settings → Plugins → Install from disk
-echo 3. 选择 build\distributions\*.zip
-echo 4. 重启 PyCharm
+echo Install steps:
+echo 1. Open PyCharm
+echo 2. Settings -^> Plugins -^> Install from disk
+echo 3. Select build\distributions\*.zip
+echo 4. Restart PyCharm
 echo.
 
 pause
