@@ -110,14 +110,43 @@ install_java() {
 # 检查并安装 Java
 log_step "1" "检查并安装 Java"
 
-if command -v java &> /dev/null; then
-    JAVA_VERSION=$(java -version 2>&1 | head -n 1)
-    log_success "Java 已安装: $JAVA_VERSION"
-    java -version 2>&1 | tee -a "$LOG_FILE"
+# 检查 Java 版本是否符合要求
+check_java_version() {
+    if command -v java &> /dev/null; then
+        # 获取 Java 版本
+        JAVA_VERSION=$(java -version 2>&1 | head -n 1 | cut -d'"' -f2)
+        log_info "检测到 Java 版本: $JAVA_VERSION"
+        
+        # 提取主版本号
+        JAVA_MAJOR=$(echo "$JAVA_VERSION" | cut -d'.' -f1)
+        
+        # 处理版本号格式（如 1.8 -> 8, 17 -> 17）
+        if [ "$JAVA_MAJOR" = "1" ]; then
+            JAVA_MAJOR=$(echo "$JAVA_VERSION" | cut -d'.' -f2)
+        fi
+        
+        log_info "Java 主版本号: $JAVA_MAJOR"
+        
+        # 检查版本是否 >= 17
+        if [ "$JAVA_MAJOR" -ge 17 ]; then
+            log_success "Java 版本符合要求"
+            return 0
+        else
+            log_warning "Java 版本过低，需要 Java 17+"
+            return 1
+        fi
+    else
+        log_warning "Java 未安装"
+        return 1
+    fi
+}
+
+if check_java_version; then
+    java -version 2>&1 | head -1
 else
-    log_warning "Java 未安装，尝试自动安装..."
+    log_info "尝试自动安装 Java 17..."
     if install_java; then
-        log_success "Java 自动安装完成"
+        log_success "Java 17 自动安装完成"
     else
         log_error "Java 安装失败，请手动安装"
         exit 1

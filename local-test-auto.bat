@@ -31,23 +31,79 @@ REM 检查并安装 Java
 echo [STEP 1/10] 检查 Java 环境...
 echo [STEP 1/10] 检查 Java 环境... >> %LOG_FILE%
 
+REM 检查 Java 是否安装并验证版本
 java -version > nul 2>&1
-if %errorlevel% neq 0 (
+if %errorlevel% equ 0 (
+    REM 获取 Java 版本
+    for /f "tokens=3" %%g in ('java -version 2^>^&1 ^| findstr /i "version"') do (
+        set JAVA_VERSION=%%g
+        set JAVA_VERSION=!JAVA_VERSION:"=!
+    )
+    
+    REM 检查是否为 Java 17+
+    echo [INFO] 检测到 Java 版本: !JAVA_VERSION!
+    echo [INFO] 检测到 Java 版本: !JAVA_VERSION! >> %LOG_FILE%
+    
+    REM 提取主版本号
+    for /f "tokens=1 delims=." %%v in ("!JAVA_VERSION!") do (
+        set JAVA_MAJOR=%%v
+    )
+    
+    REM 处理版本号格式（如 1.8 -> 8, 17 -> 17）
+    if "!JAVA_MAJOR!"=="1" (
+        for /f "tokens=2 delims=." %%v in ("!JAVA_VERSION!") do (
+            set JAVA_MAJOR=%%v
+        )
+    )
+    
+    echo [INFO] Java 主版本号: !JAVA_MAJOR!
+    echo [INFO] Java 主版本号: !JAVA_MAJOR! >> %LOG_FILE%
+    
+    REM 检查版本是否 >= 17
+    if !JAVA_MAJOR! LSS 17 (
+        echo [WARNING] Java 版本过低，需要 Java 17+，尝试自动安装...
+        echo [WARNING] Java 版本过低，需要 Java 17+，尝试自动安装... >> %LOG_FILE%
+        goto :INSTALL_JAVA
+    ) else (
+        echo [SUCCESS] Java 版本符合要求
+        echo [SUCCESS] Java 版本符合要求 >> %LOG_FILE%
+        goto :JAVA_DONE
+    )
+) else (
     echo [WARNING] Java 未安装，尝试自动安装...
     echo [WARNING] Java 未安装，尝试自动安装... >> %LOG_FILE%
-    
-    REM 检查是否有 winget
-    where winget > nul 2>&1
+    goto :INSTALL_JAVA
+)
+
+:INSTALL_JAVA
+REM 检查是否有 winget
+where winget > nul 2>&1
+if %errorlevel% equ 0 (
+    echo [INFO] 使用 winget 安装 Java 17...
+    winget install EclipseAdoptium.Temurin.17.JDK --accept-package-agreements --accept-source-agreements
     if %errorlevel% equ 0 (
-        echo [INFO] 使用 winget 安装 Java...
-        winget install EclipseAdoptium.Temurin.17.JDK --accept-package-agreements --accept-source-agreements
-        if %errorlevel% equ 0 (
-            echo [SUCCESS] Java 安装成功
-            echo [SUCCESS] Java 安装成功 >> %LOG_FILE%
-            REM 刷新环境变量
-            call refreshenv
-        ) else (
-            echo [ERROR] Java 自动安装失败
+        echo [SUCCESS] Java 17 安装成功
+        echo [SUCCESS] Java 17 安装成功 >> %LOG_FILE%
+        REM 刷新环境变量
+        call refreshenv
+        REM 重新检查 Java
+        java -version >> %LOG_FILE% 2>&1
+    ) else (
+        echo [ERROR] Java 自动安装失败
+        echo [ERROR] Java 自动安装失败 >> %LOG_FILE%
+        echo 请手动安装 Java 17: https://adoptium.net/
+        pause
+        exit /b 1
+    )
+) else (
+    echo [ERROR] 无法自动安装 Java（未找到 winget）
+    echo [ERROR] 无法自动安装 Java（未找到 winget） >> %LOG_FILE%
+    echo 请手动安装 Java 17: https://adoptium.net/
+    pause
+    exit /b 1
+)
+
+:JAVA_DONE
             echo [ERROR] Java 自动安装失败 >> %LOG_FILE%
             echo 请手动安装 Java 17: https://adoptium.net/
             pause
