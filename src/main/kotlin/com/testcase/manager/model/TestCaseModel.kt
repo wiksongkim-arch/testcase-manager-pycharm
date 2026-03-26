@@ -29,7 +29,7 @@ enum class Priority(val value: String, val level: Int) {
          * @return 对应的优先级枚举，如果未找到则返回 P2
          */
         fun fromValue(value: String): Priority {
-            return entries.find {
+            return values().find {
                 it.value.equals(value, ignoreCase = true)
             } ?: P2
         }
@@ -64,7 +64,7 @@ enum class Status(val value: String) {
          * @return 对应的状态枚举，如果未找到则返回 DRAFT
          */
         fun fromValue(value: String): Status {
-            return entries.find {
+            return values().find {
                 it.value == value || it.name.equals(value, ignoreCase = true)
             } ?: DRAFT
         }

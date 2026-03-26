@@ -19,7 +19,7 @@ repositories {
 
 dependencies {
     intellijPlatform {
-        create("PY", "2021.3.3")
+        create("PY", "2023.3.5")
         bundledPlugins(
             listOf(
                 "org.jetbrains.plugins.yaml"
@@ -33,21 +33,20 @@ dependencies {
 
 kotlin {
     compilerOptions {
-        jvmTarget = JvmTarget.JVM_11
+        jvmTarget = JvmTarget.JVM_17
     }
 }
 
-// 使用系统 Java，不强制 Toolchain
-// java {
-//     toolchain {
-//         languageVersion = JavaLanguageVersion.of(17)
-//     }
-// }
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+}
 
 tasks {
     withType<JavaCompile> {
-        sourceCompatibility = "11"
-        targetCompatibility = "11"
+        sourceCompatibility = "17"
+        targetCompatibility = "17"
     }
 
     test {
