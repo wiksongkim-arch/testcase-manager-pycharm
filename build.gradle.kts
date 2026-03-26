@@ -37,11 +37,12 @@ kotlin {
     }
 }
 
-java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
-    }
-}
+// 使用系统 Java，不强制 Toolchain
+// java {
+//     toolchain {
+//         languageVersion = JavaLanguageVersion.of(17)
+//     }
+// }
 
 tasks {
     withType<JavaCompile> {
