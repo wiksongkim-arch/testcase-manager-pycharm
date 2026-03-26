@@ -33,21 +33,21 @@ dependencies {
 
 kotlin {
     compilerOptions {
-        jvmTarget = JvmTarget.JVM_17
+        jvmTarget = JvmTarget.JVM_11
     }
 }
 
-// 使用系统 Java，不强制 Toolchain 版本
+// 使用系统 Java，不强制 Toolchain
 // java {
 //     toolchain {
-//         languageVersion = JavaLanguageVersion.of(17)
+//         languageVersion = JavaLanguageVersion.of(11)
 //     }
 // }
 
 tasks {
     withType<JavaCompile> {
-        sourceCompatibility = "17"
-        targetCompatibility = "17"
+        sourceCompatibility = "11"
+        targetCompatibility = "11"
     }
 
     test {
