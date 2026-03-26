@@ -19,7 +19,7 @@ repositories {
 
 dependencies {
     intellijPlatform {
-        create("PY", "2023.3.5")
+        create("PY", "2021.3.3")
         bundledPlugins(
             listOf(
                 "org.jetbrains.plugins.yaml"
@@ -33,7 +33,7 @@ dependencies {
 
 kotlin {
     compilerOptions {
-        jvmTarget = JvmTarget.JVM_17
+        jvmTarget = JvmTarget.JVM_11
     }
 }
 
@@ -46,8 +46,8 @@ kotlin {
 
 tasks {
     withType<JavaCompile> {
-        sourceCompatibility = "17"
-        targetCompatibility = "17"
+        sourceCompatibility = "11"
+        targetCompatibility = "11"
     }
 
     test {
@@ -58,7 +58,7 @@ tasks {
 intellijPlatform {
     pluginConfiguration {
         ideaVersion {
-            sinceBuild = "223"
+            sinceBuild = "213"
             untilBuild = "242.*"
         }
     }

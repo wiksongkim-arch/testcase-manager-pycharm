@@ -34,7 +34,7 @@
     ]]></change-notes>
 
     <!-- 支持的 IntelliJ 平台版本 -->
-    <idea-version since-build="223.0"/>
+    <idea-version since-build="213.0"/>
 
     <!-- 依赖的插件和模块 -->
     <depends>com.intellij.modules.platform</depends>
